@@ -16,12 +16,12 @@ static struct env {
 } env;
 
 const char *argp_program_version = "mallocsnoop 0.0";
-const char *argp_program_bug_address = "<bpf@vger.kernel.org>";
+const char *argp_program_bug_address = "<acme@kernel.org>";
 const char argp_program_doc[] =
 "BPF mallocsnoop demo application.\n"
 "\n"
 "It traces memory allocation and freeing and shows associated \n"
-"information (filename, allocation duration, PID and PPID, etc).\n"
+"information (allocation size and duration, PID, etc).\n"
 "\n"
 "USAGE: ./mallocsnoop [-d <min-duration-ms>] [-v]\n";
 
