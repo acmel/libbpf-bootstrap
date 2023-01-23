@@ -37,13 +37,19 @@ struct {
 	__uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
 
-const volatile unsigned long long my_pid = 0;
+const volatile unsigned long my_pid = 0;
+const volatile unsigned long min_size = 0;
+const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
 
 // Remember what was malloc's 'size' argument for this pid
 SEC("uprobe/libc.so.6:malloc")
 int BPF_UPROBE(malloc_in, size_t size)
 {
+	if ((min_size && size < min_size) ||
+	    (max_size && size > max_size))
+		return 0;
+
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
 	if (pid == my_pid)
