@@ -86,7 +86,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
 	if (e->free_event) {
-		printf("%-8s %-6s(%p) %-16s %-7d", ts, "FREE", e->addr, e->comm, e->pid);
+		printf("%-8s %-6s(%p) %5ld bytes %-16s %-7d", ts, "FREE", e->addr, e->size, e->comm, e->pid);
 
 		if (e->duration_ns)
 			printf(" (%llums)", e->duration_ns / 1000000);
