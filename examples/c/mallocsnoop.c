@@ -12,6 +12,7 @@
 
 static struct env {
 	bool verbose;
+	pid_t target_pid;
 	long min_duration_ms;
 	long min_size;
 	long max_size;
@@ -32,6 +33,7 @@ static const struct argp_option opts[] = {
 	{ "duration", 'd', "DURATION-MS", 0, "Minimum allocation duration (ms) to report" },
 	{ "min_size", 'm', "MIN_SIZE", 0, "Minimum size of allocations to report" },
 	{ "max_size", 'M', "MAX_SIZE", 0, "Maximum size of allocations to report" },
+	{ "pid", 'p', "PID", 0, "pid to trace" },
 	{},
 };
 
@@ -62,6 +64,14 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
 		env.max_size = strtol(arg, NULL, 10);
 		if (errno || env.max_size <= 0) {
 			fprintf(stderr, "Invalid maximum size: %s\n", arg);
+			argp_usage(state);
+		}
+		break;
+	case 'p':
+		errno = 0;
+		env.target_pid = strtol(arg, NULL, 10);
+		if (errno || env.target_pid <= 0) {
+			fprintf(stderr, "Invalid pid: %s\n", arg);
 			argp_usage(state);
 		}
 		break;
@@ -149,6 +159,7 @@ int main(int argc, char **argv)
         skel->rodata->min_duration_ns = env.min_duration_ms * 1000000ULL;
         skel->rodata->min_size = env.min_size;
         skel->rodata->max_size = env.max_size;
+        skel->rodata->target_pid = env.target_pid;
 	skel->rodata->my_pid = getpid();
 
 	/* Load & verify BPF programs */

@@ -38,6 +38,7 @@ struct {
 } rb SEC(".maps");
 
 const volatile unsigned long my_pid = 0;
+const volatile unsigned long target_pid = 0;
 const volatile unsigned long min_size = 0;
 const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
@@ -52,7 +53,7 @@ int BPF_UPROBE(malloc_in, size_t size)
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid == my_pid)
+	if (pid == my_pid || (target_pid && pid != target_pid))
 		return 0;
 
 	struct malloc_entry entry = {
@@ -77,7 +78,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid == my_pid)
+	if (pid == my_pid || (target_pid && pid != target_pid))
 		return 0;
 
 	struct malloc_entry *entry = bpf_map_lookup_elem(&malloc_start, &pid);
@@ -121,8 +122,9 @@ int BPF_UPROBE(handle_free, void *addr)
 {
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid == my_pid)
+	if (pid == my_pid || (target_pid && pid != target_pid))
 		return 0;
+
 	struct malloc_addrs_key addrs_key = {
 		.addr = addr,
 		.pid  = pid,
