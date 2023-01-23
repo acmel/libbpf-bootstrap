@@ -59,10 +59,16 @@ int BPF_UPROBE(malloc_in, size_t size)
 	return 0;
 }
 
+// Now that we're exiting malloc, we need to create an entry using
+// the returned address and the pid_t that allocated it as the key
+// so that at free() time we can do the math
 SEC("uretprobe/libc.so.6:malloc")
 int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 {
-	struct event *e;
+	// malloc() failed, returning NULL
+	if (!addr)
+		return 0;
+
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
 	if (pid == my_pid)
@@ -89,7 +95,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
         if (min_duration_ns)
                 return 0;
 
-	e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
 	if (!e)
 		return 0;
 
