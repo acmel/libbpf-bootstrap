@@ -130,6 +130,9 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	case EV_CALLOC:
 		printf("%-8s %-6s(%zd, %zd)=%p %-16s %-7d\n", ts, "CALLOC", e->nmemb, e->size, e->addr, e->comm, e->pid);
 		break;
+	case EV_REALLOC:
+		printf("%-8s %-6s(%p, %zd)=%p %-16s %-7d\n", ts, "REALLOC", e->realloc_addr, e->size, e->addr, e->comm, e->pid);
+		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);
 	}

@@ -9,11 +9,13 @@ enum alloc_event {
 	EV_MALLOC,
 	EV_FREE,
 	EV_CALLOC,
+	EV_REALLOC,
 };
 
 struct event {
 	unsigned long long duration_ns;
 	char comm[TASK_COMM_LEN];
+	void *realloc_addr;
 	void *addr;
 	size_t nmemb;
 	size_t size;

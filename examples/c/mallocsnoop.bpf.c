@@ -12,6 +12,7 @@ struct alloc_entry {
 	u64 ts;
 	size_t size;
 	size_t nmemb;
+	void *realloc_addr;
 };
 
 struct {
@@ -44,7 +45,7 @@ const volatile unsigned long min_size = 0;
 const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
 
-static int alloc_in(size_t nmemb, size_t size)
+static int alloc_in(void *realloc_addr, size_t nmemb, size_t size)
 {
 	unsigned long total_size = nmemb * size;
 
@@ -61,6 +62,7 @@ static int alloc_in(size_t nmemb, size_t size)
 		.ts   = bpf_ktime_get_ns(),
 		.nmemb = nmemb,
 		.size = size,
+		.realloc_addr = realloc_addr,
 	};
 
 	bpf_map_update_elem(&alloc_start, &pid, &entry, BPF_ANY);
@@ -92,6 +94,7 @@ static int alloc_out(enum alloc_event alloc_event, void *addr) // addr returned 
 		.nmemb = entry->nmemb,
 		.size = entry->size,
 		.ts   = entry->ts,
+		.realloc_addr = entry->realloc_addr,
 	};
 
 	bpf_map_update_elem(&alloc_addrs, &addrs_key, &chunk, BPF_ANY);
@@ -110,6 +113,7 @@ static int alloc_out(enum alloc_event alloc_event, void *addr) // addr returned 
 	e->addr = addr;
 	e->nmemb = chunk.nmemb;
 	e->size = chunk.size;
+	e->realloc_addr = chunk.realloc_addr;
 	bpf_get_current_comm(&e->comm, sizeof(e->comm));
 
 	/* successfully submit it to user-space for post-processing */
@@ -121,7 +125,7 @@ static int alloc_out(enum alloc_event alloc_event, void *addr) // addr returned 
 SEC("uprobe/libc.so.6:malloc")
 int BPF_UPROBE(malloc_in, size_t size)
 {
-	return alloc_in(1, size);
+	return alloc_in(NULL, 1, size);
 }
 
 // Now that we're exiting malloc, we need to create an entry using
@@ -136,13 +140,25 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 SEC("uprobe/libc.so.6:calloc")
 int BPF_UPROBE(calloc_in, size_t nmemb, size_t size)
 {
-	return alloc_in(nmemb, size);
+	return alloc_in(NULL, nmemb, size);
 }
 
 SEC("uretprobe/libc.so.6:calloc")
 int BPF_URETPROBE(calloc_out, void *addr) // addr returned by calloc
 {
 	return alloc_out(EV_CALLOC, addr);
+}
+
+SEC("uprobe/libc.so.6:realloc")
+int BPF_UPROBE(realloc_in, void *ptr, size_t size)
+{
+	return alloc_in(ptr, 1, size);
+}
+
+SEC("uretprobe/libc.so.6:realloc")
+int BPF_URETPROBE(realloc_out, void *addr) // addr returned by realloc
+{
+	return alloc_out(EV_REALLOC, addr);
 }
 
 SEC("uprobe/libc.so.6:free")
@@ -176,6 +192,7 @@ int BPF_UPROBE(handle_free, void *addr)
 	e->addr = addr;
 	e->nmemb = chunk->nmemb;
 	e->size = chunk->size;
+	e->realloc_addr = chunk->realloc_addr;
 	e->duration_ns = duration_ns;
 	bpf_get_current_comm(&e->comm, sizeof(e->comm));
 
