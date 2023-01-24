@@ -5,13 +5,18 @@
 
 #define TASK_COMM_LEN 16
 
+enum alloc_event {
+	EV_MALLOC,
+	EV_FREE,
+};
+
 struct event {
 	unsigned long long duration_ns;
 	char comm[TASK_COMM_LEN];
 	void *addr;
 	size_t size;
 	int pid;
-	bool free_event;
+	enum alloc_event event;
 };
 
 #endif /* __MALLOCSNOOP_H */

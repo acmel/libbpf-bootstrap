@@ -115,15 +115,20 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	tm = localtime(&t);
 	strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
-	if (e->free_event) {
+	switch (e->event) {
+	case EV_FREE:
 		printf("%-8s %-6s(%p) %5ld bytes %-16s %-7d", ts, "FREE", e->addr, e->size, e->comm, e->pid);
 
 		if (e->duration_ns)
 			printf(" (%llums)", e->duration_ns / 1000000);
 
 		printf("\n");
-	} else {
+		break;
+	case EV_MALLOC:
 		printf("%-8s %-6s(%zd)=%p %-16s %-7d\n", ts, "MALLOC", e->size, e->addr, e->comm, e->pid);
+		break;
+	default:
+		printf("%-8s INVALID event %d\n", ts, e->event);
 	}
 
 	return 0;

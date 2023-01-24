@@ -111,7 +111,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 	if (!e)
 		return 0;
 
-	e->free_event = false;
+	e->event = EV_MALLOC;
 	e->pid = pid;
 	e->addr = addr;
 	e->size = chunk.size;
@@ -148,7 +148,7 @@ int BPF_UPROBE(handle_free, void *addr)
 	if (!e)
 		return 0;
 
-	e->free_event = true;
+	e->event = EV_FREE;
 	e->pid = pid;
 	e->addr = addr;
 	e->size = chunk->size;
