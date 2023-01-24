@@ -43,9 +43,7 @@ const volatile unsigned long min_size = 0;
 const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
 
-// Remember what was malloc's 'size' argument for this pid
-SEC("uprobe/libc.so.6:malloc")
-int BPF_UPROBE(malloc_in, size_t size)
+static int alloc_in(size_t size)
 {
 	if ((min_size && size < min_size) ||
 	    (max_size && size > max_size))
@@ -64,6 +62,13 @@ int BPF_UPROBE(malloc_in, size_t size)
 	bpf_map_update_elem(&alloc_start, &pid, &entry, BPF_ANY);
 
 	return 0;
+}
+
+// Remember what was malloc's 'size' argument for this pid
+SEC("uprobe/libc.so.6:malloc")
+int BPF_UPROBE(malloc_in, size_t size)
+{
+	return alloc_in(size);
 }
 
 // Now that we're exiting malloc, we need to create an entry using
