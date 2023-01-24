@@ -85,13 +85,17 @@ struct {
 
 const volatile unsigned long my_pid = 0;
 const volatile unsigned long target_pid = 0;
+const volatile unsigned long exclude_pid = 0;
 const volatile unsigned long min_size = 0;
 const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
 
+// exclude_pid to avoid feedback loops, like when running mallocsnoop on
+// a gnome-terminal that allocates/frees when printing stuff then generates
+// events caught by mallocsnoop that prints, generating the loop.
 static bool filtered_pid(pid_t pid)
 {
-	return pid == my_pid || (target_pid && pid != target_pid);
+	return pid == my_pid || (target_pid && pid != target_pid) || (exclude_pid && pid == exclude_pid);
 }
 
 static int alloc_in(void *realloc_addr, size_t nmemb, size_t size)

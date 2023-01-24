@@ -14,6 +14,7 @@
 static struct env {
 	bool verbose;
 	pid_t target_pid;
+	pid_t exclude_pid;
 	long min_duration_ms;
 	long min_size;
 	long max_size;
@@ -35,6 +36,7 @@ static const struct argp_option opts[] = {
 	{ "min_size", 'm', "MIN_SIZE", 0, "Minimum size of allocations to report" },
 	{ "max_size", 'M', "MAX_SIZE", 0, "Maximum size of allocations to report" },
 	{ "pid", 'p', "PID", 0, "pid to trace" },
+	{ "exclude_pid", 'X', "PID", 0, "pid to filter" },
 	{},
 };
 
@@ -73,6 +75,14 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
 		env.target_pid = strtol(arg, NULL, 10);
 		if (errno || env.target_pid <= 0) {
 			fprintf(stderr, "Invalid pid: %s\n", arg);
+			argp_usage(state);
+		}
+		break;
+	case 'X':
+		errno = 0;
+		env.exclude_pid = strtol(arg, NULL, 10);
+		if (errno || env.exclude_pid <= 0) {
+			fprintf(stderr, "Invalid exclude pid: %s\n", arg);
 			argp_usage(state);
 		}
 		break;
@@ -172,6 +182,7 @@ int main(int argc, char **argv)
         skel->rodata->min_size = env.min_size;
         skel->rodata->max_size = env.max_size;
         skel->rodata->target_pid = env.target_pid;
+        skel->rodata->exclude_pid = env.exclude_pid;
 	skel->rodata->my_pid = getpid();
 
 	/* Load & verify BPF programs */
