@@ -23,8 +23,51 @@ struct {
 	__type(value, struct alloc_entry);
 } alloc_start SEC(".maps");
 
+// BPF verifier subtlety: If we use pid_t (32 bits) we end up with an
+// alignment home after 'pid', that if we don't fill with some value
+// the kernel BPF verifier will notice and refuse to load:
+/*
+  # ./mallocsnoop -m 32 |& tail
+  44: (18) r1 = 0xffff9176136e4000      ; frame1: R1_w=map_ptr(off=0,ks=16,vs=32,imm=0)
+  46: (b7) r4 = 0                       ; frame1: R4_w=P0
+  47: (85) call bpf_map_update_elem#2
+  invalid indirect read from stack R2 off -24+4 size 16
+  processed 40 insns (limit 1000000) max_states_per_insn 0 total_states 2 peak_states 2 mark_read 2
+  -- END PROG LOAD LOG --
+  libbpf: prog 'malloc_out': failed to load: -13
+  libbpf: failed to load object 'mallocsnoop_bpf'
+  libbpf: failed to load BPF skeleton 'mallocsnoop_bpf': -13
+  Failed to load and verify BPF skeleton
+  #
+*/
+// This is an example of failure to load something that was successfully compiled.
+
+// It is very important to do as small changes as possible, so that we can associate
+// the sometimes cryptic log provided by the kernel BPF verifier in response to the
+// sys_bpf(PROG_LOAD) with the provided BPF bytecode.
+
+// Use the 'pahole' tool to find out about this by looking at the BTF debug info in
+// the generated bpf bytecode:
+/*
+    $ pahole -C alloc_addrs_key .output/mallocsnoop.bpf.o
+    struct alloc_addrs_key {
+	pid_t                      pid;                  //     0     4
+
+	// XXX 4 bytes hole, try to pack
+
+	void *                     addr;                 //     8     8
+
+	// size: 16, cachelines: 1, members: 2
+	// sum members: 12, holes: 1, sum holes: 4
+	// last cacheline: 16 bytes
+    };
+    $
+
+    While using a u64, as in this example, we fill that 4 bytes hole and thus leave
+    no uninitialized area.
+*/
 struct alloc_addrs_key {
-	u64  pid; // Not pid_t (32 bits) to avoid a struct alignment hole, the verifier will refuse loading in that case.
+	u64  pid;
 	void *addr;
 };
 
