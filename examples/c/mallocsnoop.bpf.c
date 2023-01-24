@@ -20,7 +20,7 @@ struct {
 	__type(value, struct alloc_entry);
 } alloc_start SEC(".maps");
 
-struct malloc_addrs_key {
+struct alloc_addrs_key {
 	u64  pid; // Not pid_t (32 bits) to avoid a struct alignment hole, the verifier will refuse loading in that case.
 	void *addr;
 };
@@ -28,9 +28,9 @@ struct malloc_addrs_key {
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 65536);
-	__type(key, struct malloc_addrs_key);
+	__type(key, struct alloc_addrs_key);
 	__type(value, struct alloc_entry);
-} malloc_addrs SEC(".maps");
+} alloc_addrs SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
@@ -86,7 +86,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 	if (!entry)
 		return 0;
 
-	struct malloc_addrs_key addrs_key = {
+	struct alloc_addrs_key addrs_key = {
 		.addr = addr,
 		.pid  = pid,
 	};
@@ -95,7 +95,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 		.ts   = entry->ts,
 	};
 
-	bpf_map_update_elem(&malloc_addrs, &addrs_key, &chunk, BPF_ANY);
+	bpf_map_update_elem(&alloc_addrs, &addrs_key, &chunk, BPF_ANY);
 	bpf_map_delete_elem(&alloc_start, &pid);
 
         /* don't emit malloc events when minimum duration is specified */
@@ -125,11 +125,11 @@ int BPF_UPROBE(handle_free, void *addr)
 	if (pid == my_pid || (target_pid && pid != target_pid))
 		return 0;
 
-	struct malloc_addrs_key addrs_key = {
+	struct alloc_addrs_key addrs_key = {
 		.addr = addr,
 		.pid  = pid,
 	};
-	struct alloc_entry *chunk = bpf_map_lookup_elem(&malloc_addrs, &addrs_key);
+	struct alloc_entry *chunk = bpf_map_lookup_elem(&alloc_addrs, &addrs_key);
 
 	if (chunk == NULL)
 		return 0;
@@ -150,7 +150,7 @@ int BPF_UPROBE(handle_free, void *addr)
 	e->duration_ns = duration_ns;
 	bpf_get_current_comm(&e->comm, sizeof(e->comm));
 
-	bpf_map_delete_elem(&malloc_addrs, &addrs_key);
+	bpf_map_delete_elem(&alloc_addrs, &addrs_key);
 
 	/* send data to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
