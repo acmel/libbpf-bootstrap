@@ -14,6 +14,7 @@ struct event {
 	unsigned long long duration_ns;
 	char comm[TASK_COMM_LEN];
 	void *addr;
+	size_t nmemb;
 	size_t size;
 	int pid;
 	enum alloc_event event;

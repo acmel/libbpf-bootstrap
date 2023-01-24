@@ -11,6 +11,7 @@ char LICENSE[] SEC("license") = "Dual BSD/GPL";
 struct alloc_entry {
 	u64 ts;
 	size_t size;
+	size_t nmemb;
 };
 
 struct {
@@ -43,7 +44,7 @@ const volatile unsigned long min_size = 0;
 const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
 
-static int alloc_in(size_t size)
+static int alloc_in(size_t nmemb, size_t size)
 {
 	if ((min_size && size < min_size) ||
 	    (max_size && size > max_size))
@@ -56,6 +57,7 @@ static int alloc_in(size_t size)
 
 	struct alloc_entry entry = {
 		.ts   = bpf_ktime_get_ns(),
+		.nmemb = nmemb,
 		.size = size,
 	};
 
@@ -64,20 +66,9 @@ static int alloc_in(size_t size)
 	return 0;
 }
 
-// Remember what was malloc's 'size' argument for this pid
-SEC("uprobe/libc.so.6:malloc")
-int BPF_UPROBE(malloc_in, size_t size)
+static int alloc_out(enum alloc_event alloc_event, void *addr) // addr returned by malloc/calloc/etc
 {
-	return alloc_in(size);
-}
-
-// Now that we're exiting malloc, we need to create an entry using
-// the returned address and the pid_t that allocated it as the key
-// so that at free() time we can do the math
-SEC("uretprobe/libc.so.6:malloc")
-int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
-{
-	// malloc() failed, returning NULL
+	// malloc/calloc/etc() failed, returning NULL
 	if (!addr)
 		return 0;
 
@@ -96,6 +87,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 		.pid  = pid,
 	};
 	struct alloc_entry chunk = {
+		.nmemb = entry->nmemb,
 		.size = entry->size,
 		.ts   = entry->ts,
 	};
@@ -111,15 +103,32 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 	if (!e)
 		return 0;
 
-	e->event = EV_MALLOC;
+	e->event = alloc_event;
 	e->pid = pid;
 	e->addr = addr;
+	e->nmemb = chunk.nmemb;
 	e->size = chunk.size;
 	bpf_get_current_comm(&e->comm, sizeof(e->comm));
 
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
 	return 0;
+}
+
+// Remember what was malloc's 'size' argument for this pid
+SEC("uprobe/libc.so.6:malloc")
+int BPF_UPROBE(malloc_in, size_t size)
+{
+	return alloc_in(1, size);
+}
+
+// Now that we're exiting malloc, we need to create an entry using
+// the returned address and the pid_t that allocated it as the key
+// so that at free() time we can do the math
+SEC("uretprobe/libc.so.6:malloc")
+int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
+{
+	return alloc_out(EV_MALLOC, addr);
 }
 
 SEC("uprobe/libc.so.6:free")
@@ -151,6 +160,7 @@ int BPF_UPROBE(handle_free, void *addr)
 	e->event = EV_FREE;
 	e->pid = pid;
 	e->addr = addr;
+	e->nmemb = chunk->nmemb;
 	e->size = chunk->size;
 	e->duration_ns = duration_ns;
 	bpf_get_current_comm(&e->comm, sizeof(e->comm));
