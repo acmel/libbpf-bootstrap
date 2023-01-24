@@ -8,7 +8,7 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-struct malloc_entry {
+struct alloc_entry {
 	u64 ts;
 	size_t size;
 };
@@ -17,7 +17,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 16384);
 	__type(key, pid_t);
-	__type(value, struct malloc_entry);
+	__type(value, struct alloc_entry);
 } malloc_start SEC(".maps");
 
 struct malloc_addrs_key {
@@ -29,7 +29,7 @@ struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
 	__uint(max_entries, 65536);
 	__type(key, struct malloc_addrs_key);
-	__type(value, struct malloc_entry);
+	__type(value, struct alloc_entry);
 } malloc_addrs SEC(".maps");
 
 struct {
@@ -56,7 +56,7 @@ int BPF_UPROBE(malloc_in, size_t size)
 	if (pid == my_pid || (target_pid && pid != target_pid))
 		return 0;
 
-	struct malloc_entry entry = {
+	struct alloc_entry entry = {
 		.ts   = bpf_ktime_get_ns(),
 		.size = size,
 	};
@@ -81,7 +81,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 	if (pid == my_pid || (target_pid && pid != target_pid))
 		return 0;
 
-	struct malloc_entry *entry = bpf_map_lookup_elem(&malloc_start, &pid);
+	struct alloc_entry *entry = bpf_map_lookup_elem(&malloc_start, &pid);
 
 	if (!entry)
 		return 0;
@@ -90,7 +90,7 @@ int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 		.addr = addr,
 		.pid  = pid,
 	};
-	struct malloc_entry chunk = {
+	struct alloc_entry chunk = {
 		.size = entry->size,
 		.ts   = entry->ts,
 	};
@@ -129,7 +129,7 @@ int BPF_UPROBE(handle_free, void *addr)
 		.addr = addr,
 		.pid  = pid,
 	};
-	struct malloc_entry *chunk = bpf_map_lookup_elem(&malloc_addrs, &addrs_key);
+	struct alloc_entry *chunk = bpf_map_lookup_elem(&malloc_addrs, &addrs_key);
 
 	if (chunk == NULL)
 		return 0;
