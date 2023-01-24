@@ -11,6 +11,48 @@
 #include "mallocsnoop.h"
 #include "mallocsnoop.skel.h"
 
+/*
+ * mallocsnoop output example, using -X to 
+   exclude the 3445 pid_t that is the gnome-terminal where it is running, so the
+   output from mallocsnoop causes allocations in the gnome-terminal instance it
+   is running, causing more events, looping, add -X to avoid that.
+
+   -m 8192 == minimum alloc size
+
+  [root@five c]# ./mallocsnoop -m 8192 -X 3445 | head -30
+  TIME     EVENT(ADDR) COMM             PID
+  10:35:40 MALLOC(10485856)=0x55a34b6f6130 sssd_kcm         497707
+  10:35:40 MALLOC(10485848)=0x55a34caf63e0 sssd_kcm         497707
+  10:35:40 FREE  (0x55a34caf63e0) 10485848 bytes sssd_kcm         497707  (0ms)
+  10:35:40 FREE  (0x55a34b6f6130) 10485856 bytes sssd_kcm         497707  (1ms)
+  10:35:40 CALLOC(1, 8192)=0x556b35cb00c0 ping             980870
+  10:35:40 MALLOC(131072)=0x556b35cb0140 ping             980870
+  10:35:40 MALLOC(131072)=0x560e18fae030 systemd-resolve  1134
+  10:35:40 CALLOC(1, 8192)=0x560e18f74300 systemd-resolve  1134
+  10:35:40 FREE  (0x556b35cb0140) 131072 bytes ping             980870  (0ms)
+  10:35:40 FREE  (0x556b35cb00c0)  8192 bytes ping             980870  (0ms)
+  10:35:40 FREE  (0x560e18fae030) 131072 bytes systemd-resolve  1134    (0ms)
+  10:35:40 FREE  (0x560e18f74300)  8192 bytes systemd-resolve  1134    (0ms)
+  10:35:41 MALLOC(131072)=0x560e18fae030 systemd-resolve  1134
+  10:35:41 MALLOC(131072)=0x560e18e2ce40 systemd-resolve  1134
+  10:35:41 CALLOC(1, 8192)=0x560e18f74300 systemd-resolve  1134
+  10:35:41 FREE  (0x560e18e2ce40) 131072 bytes systemd-resolve  1134    (0ms)
+  10:35:41 FREE  (0x560e18f74300)  8192 bytes systemd-resolve  1134    (0ms)
+  10:35:41 CALLOC(1, 8192)=0x560e18f74390 systemd-resolve  1134
+  10:35:41 FREE  (0x560e18fae030) 131072 bytes systemd-resolve  1134    (15ms)
+  10:35:41 FREE  (0x560e18f74390)  8192 bytes systemd-resolve  1134    (0ms)
+  10:35:41 CALLOC(1, 8192)=0x556b35cb0140 ping             980870
+  10:35:41 MALLOC(131072)=0x560e18fae030 systemd-resolve  1134
+  10:35:41 MALLOC(131072)=0x556b35cb01c0 ping             980870
+  10:35:41 CALLOC(1, 8192)=0x560e18f74460 systemd-resolve  1134
+  10:35:41 FREE  (0x556b35cb01c0) 131072 bytes ping             980870  (0ms)
+  10:35:41 FREE  (0x556b35cb0140)  8192 bytes ping             980870  (0ms)
+  10:35:41 FREE  (0x560e18fae030) 131072 bytes systemd-resolve  1134    (0ms)
+  10:35:41 FREE  (0x560e18f74460)  8192 bytes systemd-resolve  1134    (0ms)
+  10:35:42 CALLOC(1, 8192)=0x556b35cb01c0 ping             980870
+  [root@five c]#
+*/
+
 static struct env {
 	bool verbose;
 	pid_t target_pid;
