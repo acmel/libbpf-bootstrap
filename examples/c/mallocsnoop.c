@@ -127,6 +127,9 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	case EV_MALLOC:
 		printf("%-8s %-6s(%zd)=%p %-16s %-7d\n", ts, "MALLOC", e->size, e->addr, e->comm, e->pid);
 		break;
+	case EV_CALLOC:
+		printf("%-8s %-6s(%zd, %zd)=%p %-16s %-7d\n", ts, "CALLOC", e->nmemb, e->size, e->addr, e->comm, e->pid);
+		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);
 	}

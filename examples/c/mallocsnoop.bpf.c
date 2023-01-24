@@ -46,8 +46,10 @@ const volatile unsigned long long min_duration_ns = 0;
 
 static int alloc_in(size_t nmemb, size_t size)
 {
-	if ((min_size && size < min_size) ||
-	    (max_size && size > max_size))
+	unsigned long total_size = nmemb * size;
+
+	if ((min_size && total_size < min_size) ||
+	    (max_size && total_size > max_size))
 		return 0;
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
@@ -129,6 +131,18 @@ SEC("uretprobe/libc.so.6:malloc")
 int BPF_URETPROBE(malloc_out, void *addr) // addr returned by malloc
 {
 	return alloc_out(EV_MALLOC, addr);
+}
+
+SEC("uprobe/libc.so.6:calloc")
+int BPF_UPROBE(calloc_in, size_t nmemb, size_t size)
+{
+	return alloc_in(nmemb, size);
+}
+
+SEC("uretprobe/libc.so.6:calloc")
+int BPF_URETPROBE(calloc_out, void *addr) // addr returned by calloc
+{
+	return alloc_out(EV_CALLOC, addr);
 }
 
 SEC("uprobe/libc.so.6:free")

@@ -8,6 +8,7 @@
 enum alloc_event {
 	EV_MALLOC,
 	EV_FREE,
+	EV_CALLOC,
 };
 
 struct event {
