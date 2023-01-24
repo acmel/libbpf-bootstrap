@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0 OR BSD-3-Clause
+// Started from the libbpf-bootstrap examples/c/bootstrap.bpf.c
 /* Copyright (c) 2022 Red Hat */
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
