@@ -89,6 +89,11 @@ const volatile unsigned long min_size = 0;
 const volatile unsigned long max_size = 0;
 const volatile unsigned long long min_duration_ns = 0;
 
+static bool filtered_pid(pid_t pid)
+{
+	return pid == my_pid || (target_pid && pid != target_pid);
+}
+
 static int alloc_in(void *realloc_addr, size_t nmemb, size_t size)
 {
 	unsigned long total_size = nmemb * size;
@@ -99,7 +104,7 @@ static int alloc_in(void *realloc_addr, size_t nmemb, size_t size)
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid == my_pid || (target_pid && pid != target_pid))
+	if (filtered_pid(pid))
 		return 0;
 
 	struct alloc_entry entry = {
@@ -122,7 +127,7 @@ static int alloc_out(enum alloc_event alloc_event, void *addr) // addr returned 
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid == my_pid || (target_pid && pid != target_pid))
+	if (filtered_pid(pid))
 		return 0;
 
 	struct alloc_entry *entry = bpf_map_lookup_elem(&alloc_start, &pid);
@@ -210,7 +215,7 @@ int BPF_UPROBE(handle_free, void *addr)
 {
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	if (pid == my_pid || (target_pid && pid != target_pid))
+	if (filtered_pid(pid))
 		return 0;
 
 	struct alloc_addrs_key addrs_key = {
