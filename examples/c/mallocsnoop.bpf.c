@@ -255,3 +255,32 @@ int BPF_UPROBE(handle_free, void *addr)
 	bpf_ringbuf_submit(e, 0);
 	return 0;
 }
+
+SEC("uretprobe")
+int BPF_URETPROBE(NewCounter, void *counter)
+{
+	// failed, returning NULL
+	if (!counter)
+		return 0;
+
+	pid_t pid = bpf_get_current_pid_tgid() >> 32;
+
+	if (filtered_pid(pid))
+		return 0;
+
+	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+	if (!e)
+		return 0;
+
+	e->event = EV_NEW_COUNTER;
+	e->pid = pid;
+	e->addr = counter;
+	e->nmemb = 1;
+	e->size = 0;
+	e->realloc_addr = NULL;
+	bpf_get_current_comm(&e->comm, sizeof(e->comm));
+
+	/* successfully submit it to user-space for post-processing */
+	bpf_ringbuf_submit(e, 0);
+	return 0;
+}

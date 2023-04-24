@@ -10,6 +10,7 @@ enum alloc_event {
 	EV_FREE,
 	EV_CALLOC,
 	EV_REALLOC,
+	EV_NEW_COUNTER,
 };
 
 struct event {

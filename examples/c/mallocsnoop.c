@@ -186,6 +186,9 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	case EV_REALLOC:
 		printf("%-8s %-6s(%p, %zd)=%p %-16s %-7d\n", ts, "REALLOC", e->realloc_addr, e->size, e->addr, e->comm, e->pid);
 		break;
+	case EV_NEW_COUNTER:
+		printf("%-8s %-6s(%p) %-16s %-7d\n", ts, "NEW_COUNTER", e->addr, e->comm, e->pid);
+		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);
 	}
@@ -197,6 +200,7 @@ int main(int argc, char **argv)
 {
 	struct ring_buffer *rb = NULL;
 	struct mallocsnoop_bpf *skel;
+	DECLARE_LIBBPF_OPTS(bpf_uprobe_opts, uprobe_opts);
 	int err;
 
 	/* Parse command line arguments */
@@ -233,6 +237,20 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to load and verify BPF skeleton\n");
 		goto cleanup;
 	}
+
+	uprobe_opts.func_name = "github.com/prometheus/client_golang/prometheus.NewCounter";
+	uprobe_opts.retprobe = true;
+	skel->links.NewCounter = bpf_program__attach_uprobe_opts(/*prog=*/skel->progs.NewCounter,
+								 /*pid=*/-1,
+								 /*binary_path=*/"main",
+								 /*func_offset=*/0,
+								 /*opts=*/&uprobe_opts);
+	if (!skel->links.NewCounter) {
+		err = -errno;
+		fprintf(stderr, "Failed to attach uprobe: %d\n", err);
+		goto cleanup;
+	}
+
 
 	/* Attach tracepoints */
 	err = mallocsnoop_bpf__attach(skel);
