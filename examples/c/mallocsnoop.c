@@ -189,6 +189,9 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	case EV_NEW_COUNTER:
 		printf("%-8s %-6s(%p) %-16s %-7d\n", ts, "NEW_COUNTER", e->addr, e->comm, e->pid);
 		break;
+	case EV_COUNTER_INC:
+		printf("%-8s %-6s(%p) %-16s %-7d\n", ts, "COUNTER_INC", e->addr, e->comm, e->pid);
+		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);
 	}
@@ -246,6 +249,19 @@ int main(int argc, char **argv)
 								 /*func_offset=*/0,
 								 /*opts=*/&uprobe_opts);
 	if (!skel->links.NewCounter) {
+		err = -errno;
+		fprintf(stderr, "Failed to attach uprobe: %d\n", err);
+		goto cleanup;
+	}
+
+	uprobe_opts.func_name = "github.com/prometheus/client_golang/prometheus.(*counter).Inc";
+	uprobe_opts.retprobe = false;
+	skel->links.counterInc = bpf_program__attach_uprobe_opts(/*prog=*/skel->progs.counterInc,
+								 /*pid=*/-1,
+								 /*binary_path=*/"main",
+								 /*func_offset=*/0,
+								 /*opts=*/&uprobe_opts);
+	if (!skel->links.counterInc) {
 		err = -errno;
 		fprintf(stderr, "Failed to attach uprobe: %d\n", err);
 		goto cleanup;

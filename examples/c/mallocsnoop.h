@@ -11,6 +11,7 @@ enum alloc_event {
 	EV_CALLOC,
 	EV_REALLOC,
 	EV_NEW_COUNTER,
+	EV_COUNTER_INC,
 };
 
 struct event {
