@@ -256,10 +256,10 @@ int BPF_UPROBE(handle_free, void *addr)
 	return 0;
 }
 
-struct github_com_prometheus_client_golang_prometheus_counter {
+typedef struct {
 	uint64_t   valBits;     /*     0     8 */
 	uint64_t   valInt;      /*     8     8 */
-};
+} github_com_prometheus_client_golang_prometheus_counter;
 
 SEC("uretprobe")
 int BPF_URETPROBE(NewCounter, void *counter)
@@ -290,7 +290,7 @@ int BPF_URETPROBE(NewCounter, void *counter)
 	return 0;
 }
 
-static inline int counter_read(struct github_com_prometheus_client_golang_prometheus_counter *counter, struct pt_regs *regs)
+static inline int counter_read(github_com_prometheus_client_golang_prometheus_counter *counter, struct pt_regs *regs)
 {
 	return bpf_probe_read_user(counter, sizeof(*counter), (void *)regs->ax) < 0 ? -11111111 : 0;
 }
@@ -298,7 +298,7 @@ static inline int counter_read(struct github_com_prometheus_client_golang_promet
 SEC("uprobe")
 int BPF_UPROBE(counterInc, void *counter)
 {
-	struct github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
+	github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
 	const char unknown_description[] = "unknown description";
 
 	// failed, returning NULL
