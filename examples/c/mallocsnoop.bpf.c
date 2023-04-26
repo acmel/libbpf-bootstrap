@@ -288,6 +288,8 @@ int BPF_URETPROBE(NewCounter, void *counter)
 SEC("uprobe")
 int BPF_UPROBE(counterInc, void *counter)
 {
+	const char unknown_description[] = "unknown description";
+
 	// failed, returning NULL
 	if (!counter)
 		return 0;
@@ -304,6 +306,8 @@ int BPF_UPROBE(counterInc, void *counter)
 	e->event = EV_COUNTER_INC;
 	e->pid = pid;
 	e->addr = counter;
+	__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
+	e->value = 12345;
 	e->nmemb = 1;
 	e->size = 0;
 	e->realloc_addr = NULL;

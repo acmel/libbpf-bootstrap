@@ -23,6 +23,8 @@ struct event {
 	size_t size;
 	int pid;
 	enum alloc_event event;
+	char description[64];
+	uint64_t value;
 };
 
 #endif /* __MALLOCSNOOP_H */
