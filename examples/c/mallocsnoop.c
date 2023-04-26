@@ -191,7 +191,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		printf("%-8s %-6s(%p) %-16s %-7d\n", ts, "NEW_COUNTER", e->addr, e->comm, e->pid);
 		break;
 	case EV_COUNTER_INC:
-		printf("%-8s %-6s(%p) %-16s %-7d: desc: \"%.*s\" value: %" PRIu64 "\n", ts, "COUNTER_INC", e->addr, e->comm, e->pid, (int)sizeof(e->description), e->description, e->value);
+		printf("%-8s %-6s(%p) %-16s %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "COUNTER_INC", e->addr, e->comm, e->pid, (int)sizeof(e->description), e->description, e->value);
 		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);

@@ -256,6 +256,11 @@ int BPF_UPROBE(handle_free, void *addr)
 	return 0;
 }
 
+struct github_com_prometheus_client_golang_prometheus_counter {
+	uint64_t   valBits;     /*     0     8 */
+	uint64_t   valInt;      /*     8     8 */
+};
+
 SEC("uretprobe")
 int BPF_URETPROBE(NewCounter, void *counter)
 {
@@ -285,9 +290,15 @@ int BPF_URETPROBE(NewCounter, void *counter)
 	return 0;
 }
 
+static inline int counter_read(struct github_com_prometheus_client_golang_prometheus_counter *counter, struct pt_regs *regs)
+{
+	return bpf_probe_read_user(counter, sizeof(*counter), (void *)regs->ax) < 0 ? -11111111 : 0;
+}
+
 SEC("uprobe")
 int BPF_UPROBE(counterInc, void *counter)
 {
+	struct github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
 	const char unknown_description[] = "unknown description";
 
 	// failed, returning NULL
@@ -305,9 +316,11 @@ int BPF_UPROBE(counterInc, void *counter)
 
 	e->event = EV_COUNTER_INC;
 	e->pid = pid;
-	e->addr = counter;
+	// e->addr = counter; FIXME: Check BPF_UPROBE to see why counter is not matching 
+	e->addr = (void *)ctx->ax;
 	__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
-	e->value = 12345;
+	int ret = counter_read(&prometheus_counter, ctx);
+	e->value = ret < 0 ? ret : prometheus_counter.valInt + 1; // probed at the start of the function, before incrementing it
 	e->nmemb = 1;
 	e->size = 0;
 	e->realloc_addr = NULL;
