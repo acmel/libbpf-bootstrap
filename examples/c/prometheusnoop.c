@@ -139,6 +139,28 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	return 0;
 }
 
+static int attach_function_to_uprobe(const char *func_name, struct bpf_program *prog, struct bpf_link **linkp,
+				     bool retprobe, struct env *env, struct bpf_uprobe_opts *opts)
+{
+	int err = 0;
+
+	opts->func_name = func_name;
+	opts->retprobe = retprobe;
+	*linkp = bpf_program__attach_uprobe_opts(/*prog=*/prog, /*pid=*/-1, /*binary_path=*/env->binary_name,
+						 /*func_offset=*/0, /*opts=*/opts);
+	if (!linkp) {
+		err = -errno;
+		fprintf(stderr, "Failed to attach uprobe to function %s: %d\n", func_name, err);
+	}
+
+	return err;
+}
+
+#define prometheus_attach_class_method_to_uprobe(class_name, method_name) \
+	attach_function_to_uprobe("github.com/prometheus/client_golang/prometheus.(*" #class_name ")." #method_name, \
+				  skel->progs.class_name##method_name, \
+				  &skel->links.class_name##method_name, false, &env, &uprobe_opts)
+
 int main(int argc, char **argv)
 {
 	struct ring_buffer *rb = NULL;
@@ -179,19 +201,8 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	uprobe_opts.func_name = "github.com/prometheus/client_golang/prometheus.(*counter).Inc";
-	uprobe_opts.retprobe = false;
-	skel->links.counterInc = bpf_program__attach_uprobe_opts(/*prog=*/skel->progs.counterInc,
-								 /*pid=*/-1,
-								 /*binary_path=*/env.binary_name,
-								 /*func_offset=*/0,
-								 /*opts=*/&uprobe_opts);
-	if (!skel->links.counterInc) {
-		err = -errno;
-		fprintf(stderr, "Failed to attach uprobe: %d\n", err);
+	if (prometheus_attach_class_method_to_uprobe(counter, Inc) < 0)
 		goto cleanup;
-	}
-
 
 	/* Attach tracepoints */
 	err = prometheusnoop_bpf__attach(skel);
