@@ -5,7 +5,7 @@
 
 #define TASK_COMM_LEN 16
 
-enum alloc_event {
+enum metric_event {
 	EV_COUNTER_INC,
 };
 
@@ -14,7 +14,7 @@ struct event {
 	char comm[TASK_COMM_LEN];
 	void *object;
 	int pid;
-	enum alloc_event event;
+	enum metric_event event;
 	uint64_t value;
 	char description[64];
 };
