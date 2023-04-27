@@ -165,7 +165,7 @@ int main(int argc, char **argv)
 {
 	struct ring_buffer *rb = NULL;
 	struct prometheusnoop_bpf *skel;
-	DECLARE_LIBBPF_OPTS(bpf_uprobe_opts, uprobe_opts);
+	LIBBPF_OPTS(bpf_uprobe_opts, uprobe_opts);
 
 	// Default binary to monitor
 	env.binary_name = "main";
