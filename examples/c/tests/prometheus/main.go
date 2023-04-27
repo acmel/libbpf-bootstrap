@@ -30,6 +30,11 @@ var fake_counter = prometheus.NewCounter(prometheus.CounterOpts{
 	Help: "Increments at every second",
 })
 
+var another_fake_counter = prometheus.NewCounter(prometheus.CounterOpts{
+	Name: "another_fake_counter",
+	Help: "Increments twice every second",
+})
+
 // StartMetricsServer runs the prometheus listener so that KPNG metrics can be collected
 // TODO add TLS Auth if configured
 func StartMetricsServer(bindAddress string,
@@ -67,6 +72,7 @@ func main() {
 	fmt.Println("Prometheus demo")
 
 	prometheus.MustRegister(fake_counter)
+	prometheus.MustRegister(another_fake_counter)
 
 	ctx := context.Background()
 
@@ -81,6 +87,17 @@ func main() {
 			select {
 			case <-ticker.C:
 				fake_counter.Inc()
+			}
+		}
+	}()
+
+	// Run a another Goroutine increment fake counter ever second
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				another_fake_counter.Inc()
+				another_fake_counter.Inc()
 			}
 		}
 	}()
