@@ -3,14 +3,11 @@
 #ifndef __PROMETHEUSSNOOP_H
 #define __PROMETHEUSSNOOP_H
 
-#define TASK_COMM_LEN 16
-
 enum metric_event {
 	EV_COUNTER_INC,
 };
 
 struct event {
-	char comm[TASK_COMM_LEN];
 	void *object;
 	int pid;
 	enum metric_event event;

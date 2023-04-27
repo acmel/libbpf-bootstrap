@@ -130,7 +130,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 
 	switch (e->event) {
 	case EV_COUNTER_INC:
-		printf("%-8s %-6s(%p) %-16s %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "COUNTER_INC", e->object, e->comm, e->pid, (int)sizeof(e->description), e->description, e->value);
+		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "COUNTER_INC", e->object, e->pid, (int)sizeof(e->description), e->description, e->value);
 		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);
@@ -209,7 +209,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Process events */
-	printf("%-8s %-5s %-16s %-7s\n", "TIME", "EVENT(ADDR)", "COMM", "PID");
+	printf("%-8s %-5s %-7s\n", "TIME", "EVENT(ADDR)", "PID");
 	while (!exiting) {
 		err = ring_buffer__poll(rb, 100 /* timeout, ms */);
 		/* Ctrl-C will cause -EINTR */

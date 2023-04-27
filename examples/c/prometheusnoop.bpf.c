@@ -149,8 +149,6 @@ int BPF_UPROBE(counterInc, void *counter)
 		e->value = prometheus_counter.valInt + 1; // probed at the start of the function, before incrementing it
 	}
 
-	bpf_get_current_comm(&e->comm, sizeof(e->comm));
-
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
 	return 0;
