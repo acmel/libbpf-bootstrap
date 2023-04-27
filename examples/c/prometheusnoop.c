@@ -129,9 +129,6 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
 	switch (e->event) {
-	case EV_NEW_COUNTER:
-		printf("%-8s %-6s(%p) %-16s %-7d\n", ts, "NEW_COUNTER", e->object, e->comm, e->pid);
-		break;
 	case EV_COUNTER_INC:
 		printf("%-8s %-6s(%p) %-16s %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "COUNTER_INC", e->object, e->comm, e->pid, (int)sizeof(e->description), e->description, e->value);
 		break;
@@ -179,19 +176,6 @@ int main(int argc, char **argv)
 	err = prometheusnoop_bpf__load(skel);
 	if (err) {
 		fprintf(stderr, "Failed to load and verify BPF skeleton\n");
-		goto cleanup;
-	}
-
-	uprobe_opts.func_name = "github.com/prometheus/client_golang/prometheus.NewCounter";
-	uprobe_opts.retprobe = true;
-	skel->links.NewCounter = bpf_program__attach_uprobe_opts(/*prog=*/skel->progs.NewCounter,
-								 /*pid=*/-1,
-								 /*binary_path=*/env.binary_name,
-								 /*func_offset=*/0,
-								 /*opts=*/&uprobe_opts);
-	if (!skel->links.NewCounter) {
-		err = -errno;
-		fprintf(stderr, "Failed to attach uprobe: %d\n", err);
 		goto cleanup;
 	}
 

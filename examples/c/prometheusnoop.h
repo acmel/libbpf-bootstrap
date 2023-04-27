@@ -6,7 +6,6 @@
 #define TASK_COMM_LEN 16
 
 enum alloc_event {
-	EV_NEW_COUNTER,
 	EV_COUNTER_INC,
 };
 
