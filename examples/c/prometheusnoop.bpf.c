@@ -118,14 +118,10 @@ static inline int counter_read(github_com_prometheus_client_golang_prometheus_co
 }
 
 SEC("uprobe")
-int BPF_UPROBE(counterInc, void *counter)
+int BPF_UPROBE(counterInc)
 {
 	github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
 	const char unknown_description[] = "unknown description";
-
-	// failed, returning NULL
-	if (!counter)
-		return 0;
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
@@ -138,8 +134,7 @@ int BPF_UPROBE(counterInc, void *counter)
 
 	e->event = EV_COUNTER_INC;
 	e->pid = pid;
-	// e->object = counter; FIXME: Check BPF_UPROBE to see why counter is not matching 
-	e->object = (void *)ctx->ax;
+	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
 	int ret = counter_read(&prometheus_counter, e->description, sizeof(e->description), ctx);
 
 	if (ret < 0) {
