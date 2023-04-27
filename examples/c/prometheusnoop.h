@@ -10,7 +10,6 @@ enum metric_event {
 };
 
 struct event {
-	unsigned long long duration_ns;
 	char comm[TASK_COMM_LEN];
 	void *object;
 	int pid;
