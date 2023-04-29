@@ -144,7 +144,10 @@ int BPF_UPROBE(counterInc)
 		e->value = prometheus_counter.valInt + 1; // probed at the start of the function, before incrementing it
 	}
 
+	e->increment = 1;
+
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
 	return 0;
 }
+
