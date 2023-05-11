@@ -4,9 +4,9 @@
 #define __PROMETHEUSSNOOP_H
 
 enum metric_event {
-	EV_COUNTER_INC,
-	EV_GAUGE_ADD,
-	EV_GAUGE_INC,
+	EV_counterInc,
+	EV_gaugeAdd,
+	EV_gaugeInc,
 };
 
 struct event {

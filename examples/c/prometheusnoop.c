@@ -142,14 +142,14 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 	strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
 	switch (e->event) {
-	case EV_COUNTER_INC:
-		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "COUNTER_INC", e->object, e->pid, (int)sizeof(e->description), e->description, e->value);
+	case EV_counterInc:
+		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "counterInc", e->object, e->pid, (int)sizeof(e->description), e->description, e->value);
 		break;
-	case EV_GAUGE_ADD:
-		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %f\n", ts, "GAUGE_ADD", e->object, e->pid, (int)sizeof(e->description), e->description, Float64frombits(e->value));
+	case EV_gaugeAdd:
+		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %f\n", ts, "gaugeAdd", e->object, e->pid, (int)sizeof(e->description), e->description, Float64frombits(e->value));
 		break;
-	case EV_GAUGE_INC:
-		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %f\n", ts, "GAUGE_INC", e->object, e->pid, (int)sizeof(e->description), e->description, Float64frombits(e->value));
+	case EV_gaugeInc:
+		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %f\n", ts, "gaugeInc", e->object, e->pid, (int)sizeof(e->description), e->description, Float64frombits(e->value));
 		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);

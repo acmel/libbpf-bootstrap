@@ -131,7 +131,7 @@ SEC("uprobe") int BPF_UPROBE(counterInc)
 	if (!e)
 		return 0;
 
-	e->event = EV_COUNTER_INC;
+	e->event = EV_counterInc;
 	e->pid = pid;
 	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
 	int ret = counter_read(&prometheus_counter, e->description, sizeof(e->description), ctx);
@@ -230,10 +230,10 @@ static int gauge_process_metric(int event, struct pt_regs *regs)
 
 SEC("uprobe") int BPF_UPROBE(gaugeInc)
 {
-	return gauge_process_metric(EV_GAUGE_INC, ctx);
+	return gauge_process_metric(EV_gaugeInc, ctx);
 }
 
 SEC("uprobe") int BPF_UPROBE(gaugeAdd)
 {
-	return gauge_process_metric(EV_GAUGE_ADD, ctx);
+	return gauge_process_metric(EV_gaugeAdd, ctx);
 }
