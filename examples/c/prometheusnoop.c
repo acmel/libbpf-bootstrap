@@ -146,7 +146,7 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "COUNTER_INC", e->object, e->pid, (int)sizeof(e->description), e->description, e->value);
 		break;
 	case EV_GAUGE_INC:
-		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %" PRId64 " inc: %" PRId64 "\n", ts, "GAUGE_INC", e->object, e->pid, (int)sizeof(e->description), e->description, e->value, e->increment);
+		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %f\n", ts, "GAUGE_INC", e->object, e->pid, (int)sizeof(e->description), e->description, Float64frombits(e->value));
 		break;
 	default:
 		printf("%-8s INVALID event %d\n", ts, e->event);
@@ -218,6 +218,9 @@ int main(int argc, char **argv)
 	}
 
 	if (prometheus_attach_class_method_to_uprobe(counter, Inc) < 0)
+		goto cleanup;
+
+	if (prometheus_attach_class_method_to_uprobe(gauge, Inc) < 0)
 		goto cleanup;
 
 	/* Attach tracepoints */

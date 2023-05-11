@@ -151,3 +151,85 @@ int BPF_UPROBE(counterInc)
 	return 0;
 }
 
+#if 0
+$ pahole -C github.com/prometheus/client_golang/prometheus.gauge tests/prometheus/main
+struct github.com/prometheus/client_golang/prometheus.gauge {
+	uint64                     valBits;              /*     0     8 */
+	github.com/prometheus/client_golang/prometheus.selfCollector selfCollector; /*     8    16 */
+	github.com/prometheus/client_golang/prometheus.Desc * desc; /*    24     8 */
+	struct []*github.com/prometheus/client_model/go.LabelPair labelPairs; /*    32    24 */
+
+	/* size: 56, cachelines: 1, members: 4 */
+	/* last cacheline: 56 bytes */
+};
+#endif
+
+typedef struct {
+	uint64_t   valBits;     /*     0     8 */
+	uint64_t   selfCollector[2]; /* github.com/prometheus/client_golang/prometheus.selfCollector */ /*    8    16 */
+	github_com_prometheus_client_golang_prometheus_Desc *desc; /*    24     8 */
+} github_com_prometheus_client_golang_prometheus_gauge;
+
+static inline int gauge_read(github_com_prometheus_client_golang_prometheus_gauge *gauge,
+			       char *desc, size_t desc_size,
+			       struct pt_regs *regs)
+{
+	if (bpf_probe_read_user(gauge, sizeof(*gauge), (void *)regs->ax) < 0)
+		return -11111111;
+
+	github_com_prometheus_client_golang_prometheus_Desc prometheus_gauge_desc = {};
+
+	if (bpf_probe_read_user(&prometheus_gauge_desc, sizeof(prometheus_gauge_desc), gauge->desc) < 0)
+		return -22222222;
+
+	if (desc_size == 0)
+		return -33333333;
+
+	--desc_size;
+
+	const size_t fqName_len = prometheus_gauge_desc.fqName.len;
+
+	if (desc_size > fqName_len)
+		desc_size = fqName_len;
+
+	if (bpf_probe_read_user(desc, desc_size, prometheus_gauge_desc.fqName.str) < 0)
+		return -44444444;
+
+	desc[desc_size] = '\0';
+
+	return 0;
+}
+
+SEC("uprobe")
+int BPF_UPROBE(gaugeInc)
+{
+	github_com_prometheus_client_golang_prometheus_gauge prometheus_gauge = {};
+	const char unknown_description[] = "unknown description";
+
+	pid_t pid = bpf_get_current_pid_tgid() >> 32;
+
+	if (filtered_pid(pid))
+		return 0;
+
+	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+	if (!e)
+		return 0;
+
+	e->event = EV_GAUGE_INC;
+	e->pid = pid;
+	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
+	int ret = gauge_read(&prometheus_gauge, e->description, sizeof(e->description), ctx);
+
+	if (ret < 0) {
+		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
+		e->value = ret;
+	} else {
+		e->value = prometheus_gauge.valBits;
+	}
+
+	e->increment = 1;
+
+	/* successfully submit it to user-space for post-processing */
+	bpf_ringbuf_submit(e, 0);
+	return 0;
+}
