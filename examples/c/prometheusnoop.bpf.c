@@ -141,10 +141,8 @@ int BPF_UPROBE(counterInc)
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
 		e->value = ret;
 	} else {
-		e->value = prometheus_counter.valInt + 1; // probed at the start of the function, before incrementing it
+		e->value = prometheus_counter.valInt;
 	}
-
-	e->increment = 1;
 
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
@@ -227,8 +225,6 @@ int BPF_UPROBE(gaugeInc)
 		e->value = prometheus_gauge.valBits;
 	}
 
-	e->increment = 1;
-
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
 	return 0;
@@ -260,8 +256,6 @@ int BPF_UPROBE(gaugeAdd)
 	} else {
 		e->value = prometheus_gauge.valBits;
 	}
-
-	e->increment = 99999999999; // We can't read %xmm0 from uprobes, we need to implement bpf_read_register_value() in the Linux kernel
 
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);

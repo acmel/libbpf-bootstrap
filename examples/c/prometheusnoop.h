@@ -14,7 +14,6 @@ struct event {
 	int pid;
 	enum metric_event event;
 	uint64_t value;
-	int64_t increment;
 	// This can be further optimized by taking advantage of Go's string type
 	// that comes with the string length.
 	char description[64];
