@@ -228,12 +228,11 @@ static int gauge_process_metric(int event, struct pt_regs *regs)
 	return 0;
 }
 
-SEC("uprobe") int BPF_UPROBE(gaugeInc)
-{
-	return gauge_process_metric(EV_gaugeInc, ctx);
+#define gauge_method_hook(method) \
+SEC("uprobe") int BPF_UPROBE(gauge##method) \
+{ \
+	return gauge_process_metric(EV_gauge##method, ctx); \
 }
 
-SEC("uprobe") int BPF_UPROBE(gaugeAdd)
-{
-	return gauge_process_metric(EV_gaugeAdd, ctx);
-}
+gauge_method_hook(Add);
+gauge_method_hook(Inc);
