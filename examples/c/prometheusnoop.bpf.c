@@ -233,3 +233,37 @@ int BPF_UPROBE(gaugeInc)
 	bpf_ringbuf_submit(e, 0);
 	return 0;
 }
+
+SEC("uprobe")
+int BPF_UPROBE(gaugeAdd)
+{
+	github_com_prometheus_client_golang_prometheus_gauge prometheus_gauge = {};
+	const char unknown_description[] = "unknown description";
+
+	pid_t pid = bpf_get_current_pid_tgid() >> 32;
+
+	if (filtered_pid(pid))
+		return 0;
+
+	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+	if (!e)
+		return 0;
+
+	e->event = EV_GAUGE_ADD;
+	e->pid = pid;
+	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
+	int ret = gauge_read(&prometheus_gauge, e->description, sizeof(e->description), ctx);
+
+	if (ret < 0) {
+		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
+		e->value = ret;
+	} else {
+		e->value = prometheus_gauge.valBits;
+	}
+
+	e->increment = 99999999999; // We can't read %xmm0 from uprobes, we need to implement bpf_read_register_value() in the Linux kernel
+
+	/* successfully submit it to user-space for post-processing */
+	bpf_ringbuf_submit(e, 0);
+	return 0;
+}

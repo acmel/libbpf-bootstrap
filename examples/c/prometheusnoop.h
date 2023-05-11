@@ -5,6 +5,7 @@
 
 enum metric_event {
 	EV_COUNTER_INC,
+	EV_GAUGE_ADD,
 	EV_GAUGE_INC,
 };
 

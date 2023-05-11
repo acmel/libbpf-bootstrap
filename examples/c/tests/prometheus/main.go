@@ -40,6 +40,11 @@ var fake_gauge = prometheus.NewGauge(prometheus.GaugeOpts{
 	Help: "Increments at every second",
 })
 
+var another_fake_gauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	Name: "another_fake_gauge",
+	Help: "Bumps by 5 at every second",
+})
+
 // StartMetricsServer runs the prometheus listener so that KPNG metrics can be collected
 // TODO add TLS Auth if configured
 func StartMetricsServer(bindAddress string,
@@ -79,6 +84,7 @@ func main() {
 	prometheus.MustRegister(fake_counter)
 	prometheus.MustRegister(another_fake_counter)
 	prometheus.MustRegister(fake_gauge)
+	prometheus.MustRegister(another_fake_gauge)
 
 	ctx := context.Background()
 
@@ -114,6 +120,16 @@ func main() {
 			select {
 			case <-ticker.C:
 				fake_gauge.Inc()
+			}
+		}
+	}()
+
+	// Run a another Goroutine bumping fake gauge by 5 every second
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				another_fake_gauge.Add(5)
 			}
 		}
 	}()
