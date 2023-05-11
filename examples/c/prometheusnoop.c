@@ -220,13 +220,9 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	if (prometheus_attach_class_method_to_uprobe(counter, Inc) < 0)
-		goto cleanup;
-
-	if (prometheus_attach_class_method_to_uprobe(gauge, Add) < 0)
-		goto cleanup;
-
-	if (prometheus_attach_class_method_to_uprobe(gauge, Inc) < 0)
+	if (prometheus_attach_class_method_to_uprobe(counter, Inc) < 0 ||
+	    prometheus_attach_class_method_to_uprobe(gauge, Add) < 0 ||
+	    prometheus_attach_class_method_to_uprobe(gauge, Inc) < 0)
 		goto cleanup;
 
 	/* Attach tracepoints */
