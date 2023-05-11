@@ -117,8 +117,7 @@ static inline int counter_read(github_com_prometheus_client_golang_prometheus_co
 	return 0;
 }
 
-SEC("uprobe")
-int BPF_UPROBE(counterInc)
+SEC("uprobe") int BPF_UPROBE(counterInc)
 {
 	github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
 	const char unknown_description[] = "unknown description";
@@ -229,14 +228,12 @@ static int gauge_process_metric(int event, struct pt_regs *regs)
 	return 0;
 }
 
-SEC("uprobe")
-int BPF_UPROBE(gaugeInc)
+SEC("uprobe") int BPF_UPROBE(gaugeInc)
 {
 	return gauge_process_metric(EV_GAUGE_INC, ctx);
 }
 
-SEC("uprobe")
-int BPF_UPROBE(gaugeAdd)
+SEC("uprobe") int BPF_UPROBE(gaugeAdd)
 {
 	return gauge_process_metric(EV_GAUGE_ADD, ctx);
 }
