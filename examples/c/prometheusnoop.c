@@ -116,6 +116,19 @@ static void sig_handler(int sig)
 	exiting = true;
 }
 
+double Float64frombits(uint64_t bits)
+{
+	union {
+		uint64_t i;
+		double f;
+	} u;
+
+	u.i = bits;
+	return u.f;
+}
+
+double Float64frombits(uint64_t bits);
+
 static int handle_event(void *ctx, void *data, size_t data_sz)
 {
 	const struct event *e = data;
