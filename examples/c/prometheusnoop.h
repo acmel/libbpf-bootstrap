@@ -6,7 +6,9 @@
 enum metric_event {
 	EV_counterInc,
 	EV_gaugeAdd,
+	EV_gaugeDec,
 	EV_gaugeInc,
+	EV_gaugeSub,
 };
 
 struct event {

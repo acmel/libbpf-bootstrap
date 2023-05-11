@@ -235,4 +235,6 @@ SEC("uprobe") int BPF_UPROBE(gauge##method) \
 }
 
 gauge_method_hook(Add);
+gauge_method_hook(Dec);
 gauge_method_hook(Inc);
+gauge_method_hook(Sub);

@@ -45,6 +45,16 @@ var another_fake_gauge = prometheus.NewGauge(prometheus.GaugeOpts{
 	Help: "Bumps by 5 at every second",
 })
 
+var dec_fake_gauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	Name: "dec_fake_gauge",
+	Help: "Decrements at every second",
+})
+
+var sub_fake_gauge = prometheus.NewGauge(prometheus.GaugeOpts{
+	Name: "sub_fake_gauge",
+	Help: "Subtracts 5 at every second",
+})
+
 // StartMetricsServer runs the prometheus listener so that KPNG metrics can be collected
 // TODO add TLS Auth if configured
 func StartMetricsServer(bindAddress string,
@@ -85,6 +95,8 @@ func main() {
 	prometheus.MustRegister(another_fake_counter)
 	prometheus.MustRegister(fake_gauge)
 	prometheus.MustRegister(another_fake_gauge)
+	prometheus.MustRegister(dec_fake_gauge)
+	prometheus.MustRegister(sub_fake_gauge)
 
 	ctx := context.Background()
 
@@ -130,6 +142,8 @@ func main() {
 			select {
 			case <-ticker.C:
 				another_fake_gauge.Add(5)
+				sub_fake_gauge.Sub(7)
+				dec_fake_gauge.Dec()
 			}
 		}
 	}()
