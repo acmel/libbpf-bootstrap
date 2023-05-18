@@ -168,8 +168,8 @@ static int attach_function_to_uprobe(const char *func_name, struct bpf_program *
 
 #define prometheus_attach_class_method_to_uprobe(class_name, method_name) \
 	attach_function_to_uprobe("github.com/prometheus/client_golang/prometheus.(*" #class_name ")." #method_name, \
-				  skel->progs.class_name##method_name, \
-				  &skel->links.class_name##method_name, false, &env, &uprobe_opts)
+				  skel->progs.class_name, \
+				  &skel->links.class_name, false, &env, &uprobe_opts)
 
 int main(int argc, char **argv)
 {

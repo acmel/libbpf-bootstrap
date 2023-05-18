@@ -117,7 +117,7 @@ static inline int counter_read(github_com_prometheus_client_golang_prometheus_co
 	return 0;
 }
 
-SEC("uprobe") int BPF_UPROBE(counterInc)
+SEC("uprobe") int BPF_UPROBE(counter)
 {
 	github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
 	const char unknown_description[] = "unknown description";
@@ -198,7 +198,7 @@ static inline int gauge_read(github_com_prometheus_client_golang_prometheus_gaug
 	return 0;
 }
 
-static int gauge_process_metric(struct pt_regs *regs)
+SEC("uprobe") int BPF_UPROBE(gauge)
 {
 	github_com_prometheus_client_golang_prometheus_gauge prometheus_gauge = {};
 	const char unknown_description[] = "unknown description";
@@ -213,8 +213,8 @@ static int gauge_process_metric(struct pt_regs *regs)
 		return 0;
 
 	e->pid = pid;
-	e->object = (void *)regs->ax;
-	int ret = gauge_read(&prometheus_gauge, e->description, sizeof(e->description), regs);
+	e->object = (void *)ctx->ax;
+	int ret = gauge_read(&prometheus_gauge, e->description, sizeof(e->description), ctx);
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
@@ -229,14 +229,3 @@ static int gauge_process_metric(struct pt_regs *regs)
 	bpf_ringbuf_submit(e, 0);
 	return 0;
 }
-
-#define gauge_method_hook(method) \
-SEC("uprobe") int BPF_UPROBE(gauge##method) \
-{ \
-	return gauge_process_metric(ctx); \
-}
-
-gauge_method_hook(Add);
-gauge_method_hook(Dec);
-gauge_method_hook(Inc);
-gauge_method_hook(Sub);
