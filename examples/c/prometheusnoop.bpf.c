@@ -89,14 +89,14 @@ typedef struct {
 
 static inline int counter_read(struct event *e, int value_offset,
 			       int desc_offset,
-			       struct pt_regs *regs)
+			       void *object)
 {
-	if (bpf_probe_read_user(&e->value, sizeof(e->value), (void *)regs->ax + value_offset) < 0)
+	if (bpf_probe_read_user(&e->value, sizeof(e->value), object + value_offset) < 0)
 		return -11111111;
 
 	github_com_prometheus_client_golang_prometheus_Desc *prometheus_counter_desc_ptr;
 
-	if (bpf_probe_read_user(&prometheus_counter_desc_ptr, sizeof(prometheus_counter_desc_ptr), (void *)regs->ax + desc_offset) < 0)
+	if (bpf_probe_read_user(&prometheus_counter_desc_ptr, sizeof(prometheus_counter_desc_ptr), object + desc_offset) < 0)
 		return -55555555;
 
 	github_com_prometheus_client_golang_prometheus_Desc prometheus_counter_desc = {};
@@ -125,7 +125,7 @@ static inline int counter_read(struct event *e, int value_offset,
 	return 0;
 }
 
-static int metric_event(int value_offset, int desc_offset, bool float_value, struct pt_regs *regs)
+static int metric_event(int value_offset, int desc_offset, bool float_value, void *object)
 {
 	const char unknown_description[] = "unknown description";
 
@@ -139,8 +139,8 @@ static int metric_event(int value_offset, int desc_offset, bool float_value, str
 		return 0;
 
 	e->pid = pid;
-	e->object = (void *)regs->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
-	int ret = counter_read(e, value_offset, desc_offset, regs);
+	e->object = object;
+	int ret = counter_read(e, value_offset, desc_offset, object);
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
@@ -179,7 +179,7 @@ SEC("uprobe") int BPF_UPROBE(class_name) \
 { \
 	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, value_field), \
 			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, desc), \
-			    /*float_value=*/float_value, /*regs=*/ctx); \
+			    /*float_value=*/float_value, /*object=*/(void *)ctx->ax); \
 }
 
 prometheus_metric_uprobe(counter, valInt, false);
