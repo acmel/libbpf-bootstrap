@@ -155,13 +155,6 @@ static int metric_event(int value_offset, int desc_offset, bool float_value, str
 	return 0;
 }
 
-SEC("uprobe") int BPF_UPROBE(counter)
-{
-	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_counter, valInt),
-			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_counter, desc),
-			    /*float_value=*/false, /*regs=*/ctx);
-}
-
 #if 0
 $ pahole -C github.com/prometheus/client_golang/prometheus.gauge tests/prometheus/main
 struct github.com/prometheus/client_golang/prometheus.gauge {
@@ -181,9 +174,13 @@ typedef struct {
 	github_com_prometheus_client_golang_prometheus_Desc *desc; /*    24     8 */
 } github_com_prometheus_client_golang_prometheus_gauge;
 
-SEC("uprobe") int BPF_UPROBE(gauge)
-{
-	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_gauge, valBits),
-			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_gauge, desc),
-			    /*float_value=*/true, /*regs=*/ctx);
+#define prometheus_metric_uprobe(class_name, value_field) \
+SEC("uprobe") int BPF_UPROBE(class_name) \
+{ \
+	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, value_field), \
+			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, desc), \
+			    /*float_value=*/false, /*regs=*/ctx); \
 }
+
+prometheus_metric_uprobe(counter, valInt);
+prometheus_metric_uprobe(gauge, valBits);
