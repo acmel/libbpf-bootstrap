@@ -87,17 +87,25 @@ typedef struct {
 	github_com_prometheus_client_golang_prometheus_Desc *desc; /*    32     8 */
 } github_com_prometheus_client_golang_prometheus_counter;
 
-static inline int counter_read(github_com_prometheus_client_golang_prometheus_counter *counter,
-			       char *desc, size_t desc_size,
+static inline int counter_read(struct event *e, int value_offset,
+			       int desc_offset,
 			       struct pt_regs *regs)
 {
-	if (bpf_probe_read_user(counter, sizeof(*counter), (void *)regs->ax) < 0)
+	if (bpf_probe_read_user(&e->value, sizeof(e->value), (void *)regs->ax + value_offset) < 0)
 		return -11111111;
+
+	github_com_prometheus_client_golang_prometheus_Desc *prometheus_counter_desc_ptr;
+
+	if (bpf_probe_read_user(&prometheus_counter_desc_ptr, sizeof(prometheus_counter_desc_ptr), (void *)regs->ax + desc_offset) < 0)
+		return -55555555;
 
 	github_com_prometheus_client_golang_prometheus_Desc prometheus_counter_desc = {};
 
-	if (bpf_probe_read_user(&prometheus_counter_desc, sizeof(prometheus_counter_desc), counter->desc) < 0)
+	if (bpf_probe_read_user(&prometheus_counter_desc, sizeof(prometheus_counter_desc), prometheus_counter_desc_ptr) < 0)
 		return -22222222;
+
+	size_t desc_size = sizeof(e->description);
+	char *desc = e->description;
 
 	if (desc_size == 0)
 		return -33333333;
@@ -119,7 +127,6 @@ static inline int counter_read(github_com_prometheus_client_golang_prometheus_co
 
 SEC("uprobe") int BPF_UPROBE(counter)
 {
-	github_com_prometheus_client_golang_prometheus_counter prometheus_counter = {};
 	const char unknown_description[] = "unknown description";
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
@@ -133,15 +140,15 @@ SEC("uprobe") int BPF_UPROBE(counter)
 
 	e->pid = pid;
 	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
-	int ret = counter_read(&prometheus_counter, e->description, sizeof(e->description), ctx);
+	int ret = counter_read(e, offsetof(github_com_prometheus_client_golang_prometheus_counter, valInt),
+			       offsetof(github_com_prometheus_client_golang_prometheus_counter, desc),
+			       ctx);
 
 	e->float_value = false;
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
 		e->value = ret;
-	} else {
-		e->value = prometheus_counter.valInt;
 	}
 
 	/* successfully submit it to user-space for post-processing */
@@ -168,39 +175,8 @@ typedef struct {
 	github_com_prometheus_client_golang_prometheus_Desc *desc; /*    24     8 */
 } github_com_prometheus_client_golang_prometheus_gauge;
 
-static inline int gauge_read(github_com_prometheus_client_golang_prometheus_gauge *gauge,
-			       char *desc, size_t desc_size,
-			       struct pt_regs *regs)
-{
-	if (bpf_probe_read_user(gauge, sizeof(*gauge), (void *)regs->ax) < 0)
-		return -11111111;
-
-	github_com_prometheus_client_golang_prometheus_Desc prometheus_gauge_desc = {};
-
-	if (bpf_probe_read_user(&prometheus_gauge_desc, sizeof(prometheus_gauge_desc), gauge->desc) < 0)
-		return -22222222;
-
-	if (desc_size == 0)
-		return -33333333;
-
-	--desc_size;
-
-	const size_t fqName_len = prometheus_gauge_desc.fqName.len;
-
-	if (desc_size > fqName_len)
-		desc_size = fqName_len;
-
-	if (bpf_probe_read_user(desc, desc_size, prometheus_gauge_desc.fqName.str) < 0)
-		return -44444444;
-
-	desc[desc_size] = '\0';
-
-	return 0;
-}
-
 SEC("uprobe") int BPF_UPROBE(gauge)
 {
-	github_com_prometheus_client_golang_prometheus_gauge prometheus_gauge = {};
 	const char unknown_description[] = "unknown description";
 
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
@@ -214,7 +190,8 @@ SEC("uprobe") int BPF_UPROBE(gauge)
 
 	e->pid = pid;
 	e->object = (void *)ctx->ax;
-	int ret = gauge_read(&prometheus_gauge, e->description, sizeof(e->description), ctx);
+	int ret = counter_read(e, offsetof(github_com_prometheus_client_golang_prometheus_gauge, valBits),
+			       offsetof(github_com_prometheus_client_golang_prometheus_gauge, desc), ctx);
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
@@ -222,7 +199,6 @@ SEC("uprobe") int BPF_UPROBE(gauge)
 		e->value = ret;
 	} else {
 		e->float_value = true;
-		e->value = prometheus_gauge.valBits;
 	}
 
 	/* successfully submit it to user-space for post-processing */
