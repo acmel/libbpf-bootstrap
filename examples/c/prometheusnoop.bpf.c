@@ -174,13 +174,13 @@ typedef struct {
 	github_com_prometheus_client_golang_prometheus_Desc *desc; /*    24     8 */
 } github_com_prometheus_client_golang_prometheus_gauge;
 
-#define prometheus_metric_uprobe(class_name, value_field) \
+#define prometheus_metric_uprobe(class_name, value_field, float_value) \
 SEC("uprobe") int BPF_UPROBE(class_name) \
 { \
 	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, value_field), \
 			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, desc), \
-			    /*float_value=*/false, /*regs=*/ctx); \
+			    /*float_value=*/float_value, /*regs=*/ctx); \
 }
 
-prometheus_metric_uprobe(counter, valInt);
-prometheus_metric_uprobe(gauge, valBits);
+prometheus_metric_uprobe(counter, valInt, false);
+prometheus_metric_uprobe(gauge, valBits, true);
