@@ -125,14 +125,9 @@ static inline int counter_read(struct event *e, int value_offset,
 	return 0;
 }
 
-static int metric_event(int value_offset, int desc_offset, bool float_value, void *object)
+static int queue_metric_event(int value_offset, int desc_offset, bool float_value, pid_t pid, void *object)
 {
 	const char unknown_description[] = "unknown description";
-
-	pid_t pid = bpf_get_current_pid_tgid() >> 32;
-
-	if (filtered_pid(pid))
-		return 0;
 
 	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
 	if (!e)
@@ -153,6 +148,16 @@ static int metric_event(int value_offset, int desc_offset, bool float_value, voi
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
 	return 0;
+}
+
+static int metric_event(int value_offset, int desc_offset, bool float_value, void *object)
+{
+	pid_t pid = bpf_get_current_pid_tgid() >> 32;
+
+	if (filtered_pid(pid))
+		return 0;
+
+	return queue_metric_event(value_offset, desc_offset, float_value, pid, object);
 }
 
 #if 0
