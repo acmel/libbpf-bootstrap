@@ -125,7 +125,7 @@ static inline int counter_read(struct event *e, int value_offset,
 	return 0;
 }
 
-SEC("uprobe") int BPF_UPROBE(counter)
+static int metric_event(int value_offset, int desc_offset, bool float_value, struct pt_regs *regs)
 {
 	const char unknown_description[] = "unknown description";
 
@@ -139,21 +139,27 @@ SEC("uprobe") int BPF_UPROBE(counter)
 		return 0;
 
 	e->pid = pid;
-	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
-	int ret = counter_read(e, offsetof(github_com_prometheus_client_golang_prometheus_counter, valInt),
-			       offsetof(github_com_prometheus_client_golang_prometheus_counter, desc),
-			       ctx);
-
-	e->float_value = false;
+	e->object = (void *)regs->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
+	int ret = counter_read(e, value_offset, desc_offset, regs);
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
+		e->float_value = false;
 		e->value = ret;
+	} else {
+		e->float_value = float_value;
 	}
 
 	/* successfully submit it to user-space for post-processing */
 	bpf_ringbuf_submit(e, 0);
 	return 0;
+}
+
+SEC("uprobe") int BPF_UPROBE(counter)
+{
+	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_counter, valInt),
+			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_counter, desc),
+			    /*float_value=*/false, /*regs=*/ctx);
 }
 
 #if 0
@@ -177,31 +183,7 @@ typedef struct {
 
 SEC("uprobe") int BPF_UPROBE(gauge)
 {
-	const char unknown_description[] = "unknown description";
-
-	pid_t pid = bpf_get_current_pid_tgid() >> 32;
-
-	if (filtered_pid(pid))
-		return 0;
-
-	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
-	if (!e)
-		return 0;
-
-	e->pid = pid;
-	e->object = (void *)ctx->ax;
-	int ret = counter_read(e, offsetof(github_com_prometheus_client_golang_prometheus_gauge, valBits),
-			       offsetof(github_com_prometheus_client_golang_prometheus_gauge, desc), ctx);
-
-	if (ret < 0) {
-		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
-		e->float_value = false;
-		e->value = ret;
-	} else {
-		e->float_value = true;
-	}
-
-	/* successfully submit it to user-space for post-processing */
-	bpf_ringbuf_submit(e, 0);
-	return 0;
+	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_gauge, valBits),
+			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_gauge, desc),
+			    /*float_value=*/true, /*regs=*/ctx);
 }
