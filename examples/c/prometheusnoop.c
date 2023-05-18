@@ -141,23 +141,11 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 
 	strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
-#define case_gauge(method) \
-	case EV_gauge##method: \
-		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %f\n", ts, "gauge" #method, e->object, e->pid, (int)sizeof(e->description), e->description, Float64frombits(e->value)); \
-		break
-
-	switch (e->event) {
-	case EV_counterInc:
-		printf("%-8s %-6s(%p) %-7d: desc: \"%.*s\" value: %" PRId64 "\n", ts, "counterInc", e->object, e->pid, (int)sizeof(e->description), e->description, e->value);
-		break;
-	case_gauge(Add);
-	case_gauge(Dec);
-	case_gauge(Inc);
-	case_gauge(Sub);
-	default:
-		printf("%-8s INVALID event %d\n", ts, e->event);
-	}
-
+	printf("%-8s (%p) %-7d: desc: \"%.*s\" value: ", ts, e->object, e->pid, (int)sizeof(e->description), e->description);
+	if (e->float_value)
+		printf("%f\n", Float64frombits(e->value));
+	else
+		printf("%" PRId64 "\n", e->value);
 	return 0;
 }
 

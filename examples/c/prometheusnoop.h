@@ -3,19 +3,13 @@
 #ifndef __PROMETHEUSSNOOP_H
 #define __PROMETHEUSSNOOP_H
 
-enum metric_event {
-	EV_counterInc,
-	EV_gaugeAdd,
-	EV_gaugeDec,
-	EV_gaugeInc,
-	EV_gaugeSub,
-};
+#include <stdbool.h>
 
 struct event {
 	void *object;
-	int pid;
-	enum metric_event event;
 	uint64_t value;
+	int pid;
+	bool float_value;
 	// This can be further optimized by taking advantage of Go's string type
 	// that comes with the string length.
 	char description[64];

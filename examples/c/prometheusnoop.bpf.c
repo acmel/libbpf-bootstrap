@@ -131,10 +131,11 @@ SEC("uprobe") int BPF_UPROBE(counterInc)
 	if (!e)
 		return 0;
 
-	e->event = EV_counterInc;
 	e->pid = pid;
 	e->object = (void *)ctx->ax; // FIXME Why not have this as the first arg in the BPF_UPROBE() declaration?
 	int ret = counter_read(&prometheus_counter, e->description, sizeof(e->description), ctx);
+
+	e->float_value = false;
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
@@ -197,7 +198,7 @@ static inline int gauge_read(github_com_prometheus_client_golang_prometheus_gaug
 	return 0;
 }
 
-static int gauge_process_metric(int event, struct pt_regs *regs)
+static int gauge_process_metric(struct pt_regs *regs)
 {
 	github_com_prometheus_client_golang_prometheus_gauge prometheus_gauge = {};
 	const char unknown_description[] = "unknown description";
@@ -211,15 +212,16 @@ static int gauge_process_metric(int event, struct pt_regs *regs)
 	if (!e)
 		return 0;
 
-	e->event = event;
 	e->pid = pid;
 	e->object = (void *)regs->ax;
 	int ret = gauge_read(&prometheus_gauge, e->description, sizeof(e->description), regs);
 
 	if (ret < 0) {
 		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
+		e->float_value = false;
 		e->value = ret;
 	} else {
+		e->float_value = true;
 		e->value = prometheus_gauge.valBits;
 	}
 
@@ -231,7 +233,7 @@ static int gauge_process_metric(int event, struct pt_regs *regs)
 #define gauge_method_hook(method) \
 SEC("uprobe") int BPF_UPROBE(gauge##method) \
 { \
-	return gauge_process_metric(EV_gauge##method, ctx); \
+	return gauge_process_metric(ctx); \
 }
 
 gauge_method_hook(Add);
