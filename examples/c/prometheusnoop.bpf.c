@@ -119,7 +119,7 @@ static inline int counter_read(struct event *e, int value_offset,
 	return 0;
 }
 
-static int queue_metric_event(int value_offset, int desc_offset, bool float_value, pid_t pid, void *object)
+static int queue_metric_event(int value_offset, int desc_offset, bool float_value, pid_t pid, void *object, void *ctx __maybe_unused)
 {
 	const char unknown_description[] = "unknown description";
 	struct event *e;
@@ -147,11 +147,11 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 	return 0;
 }
 
-static int metric_event(int value_offset, int desc_offset, bool float_value, void *object)
+static int metric_event(int value_offset, int desc_offset, bool float_value, void *object, void *ctx)
 {
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
 
-	return queue_metric_event(value_offset, desc_offset, float_value, pid, object);
+	return queue_metric_event(value_offset, desc_offset, float_value, pid, object, ctx);
 }
 
 #if 0
@@ -178,7 +178,7 @@ SEC("uprobe") int BPF_UPROBE(class_name) \
 { \
 	return metric_event(/*value_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, value_field), \
 			    /*desc_offset=*/offsetof(github_com_prometheus_client_golang_prometheus_##class_name, desc), \
-			    /*float_value=*/float_value, /*object=*/(void *)ctx->ax); \
+			    /*float_value=*/float_value, /*object=*/(void *)ctx->ax, /*ctx=*/ctx); \
 }
 
 prometheus_metric_uprobe(counter, valInt, false);

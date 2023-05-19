@@ -5,6 +5,10 @@
 
 #include <stdbool.h>
 
+#ifndef __maybe_unused
+#define __maybe_unused __attribute__((unused))
+#endif
+
 struct event {
 	void *object;
 	uint64_t value;
