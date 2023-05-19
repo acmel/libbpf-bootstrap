@@ -122,8 +122,10 @@ static inline int counter_read(struct event *e, int value_offset,
 static int queue_metric_event(int value_offset, int desc_offset, bool float_value, pid_t pid, void *object)
 {
 	const char unknown_description[] = "unknown description";
+	struct event *e;
+	const size_t event_size = sizeof(*e) - (include_description ? 0 : sizeof(e->description));
 
-	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e) - (include_description ? 0 : sizeof(e->description)), 0);
+	e = bpf_ringbuf_reserve(&rb, event_size, 0);
 	if (!e)
 		return 0;
 
