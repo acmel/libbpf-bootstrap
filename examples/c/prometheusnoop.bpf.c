@@ -135,6 +135,12 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 #ifdef USE_PERF_RING_BUFFER
 	struct event e_buffer;
 	e = &e_buffer;
+	// It uses stack space for the full struct event, so we need to make sure we're not
+	// sending userspace whatever was in the stack for the part we didn't use.
+	// If we really had to pass this via each event, then we would need a header to state
+	// the variable size of the event.
+	if (include_description)
+		__builtin_memset(e->description, '\0', sizeof(e->description));
 #else
 	e = bpf_ringbuf_reserve(&rb, event_size, 0);
 	if (!e)
