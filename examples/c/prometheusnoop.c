@@ -26,7 +26,6 @@
     -b, --binary=BINARY        pathname or binary name in $PATH
     -p, --pid=PID              pid to trace
     -v, --verbose              Verbose debug output
-    -X, --exclude_pid=PID      pid to filter
     -?, --help                 Give this help list
         --usage                Give a short usage message
     -V, --version              Print program version
@@ -42,7 +41,6 @@ static struct env {
 	bool verbose;
 	const char *binary_name;
 	pid_t target_pid;
-	pid_t exclude_pid;
 } env;
 
 const char *argp_program_version = "prometheusnoop 0.0";
@@ -58,7 +56,6 @@ static const struct argp_option opts[] = {
 	{ "verbose", 'v', NULL, 0, "Verbose debug output" },
 	{ "binary", 'b', "BINARY", 0, "pathname or binary name in $PATH" },
 	{ "pid", 'p', "PID", 0, "pid to trace" },
-	{ "exclude_pid", 'X', "PID", 0, "pid to filter" },
 	{},
 };
 
@@ -76,14 +73,6 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
 		env.target_pid = strtol(arg, NULL, 10);
 		if (errno || env.target_pid <= 0) {
 			fprintf(stderr, "Invalid pid: %s\n", arg);
-			argp_usage(state);
-		}
-		break;
-	case 'X':
-		errno = 0;
-		env.exclude_pid = strtol(arg, NULL, 10);
-		if (errno || env.exclude_pid <= 0) {
-			fprintf(stderr, "Invalid exclude pid: %s\n", arg);
 			argp_usage(state);
 		}
 		break;
@@ -201,7 +190,6 @@ int main(int argc, char **argv)
 	}
 
         skel->rodata->target_pid = env.target_pid;
-        skel->rodata->exclude_pid = env.exclude_pid;
 	skel->rodata->my_pid = getpid();
 
 	/* Load & verify BPF programs */

@@ -16,14 +16,10 @@ struct {
 
 const volatile unsigned long my_pid = 0;
 const volatile unsigned long target_pid = 0;
-const volatile unsigned long exclude_pid = 0;
 
-// exclude_pid to avoid feedback loops, like when running mallocsnoop on
-// a gnome-terminal that allocates/frees when printing stuff then generates
-// events caught by mallocsnoop that prints, generating the loop.
 static bool filtered_pid(pid_t pid)
 {
-	return pid == my_pid || (target_pid && pid != target_pid) || (exclude_pid && pid == exclude_pid);
+	return pid == my_pid || (target_pid && pid != target_pid);
 }
 
 #if 0
