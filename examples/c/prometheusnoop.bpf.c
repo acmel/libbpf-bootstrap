@@ -14,12 +14,11 @@ struct {
 	__uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
 
-const volatile unsigned long my_pid = 0;
 const volatile unsigned long target_pid = 0;
 
 static bool filtered_pid(pid_t pid)
 {
-	return pid == my_pid || (target_pid && pid != target_pid);
+	return target_pid && pid != target_pid;
 }
 
 #if 0

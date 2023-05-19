@@ -190,7 +190,6 @@ int main(int argc, char **argv)
 	}
 
         skel->rodata->target_pid = env.target_pid;
-	skel->rodata->my_pid = getpid();
 
 	/* Load & verify BPF programs */
 	err = prometheusnoop_bpf__load(skel);
