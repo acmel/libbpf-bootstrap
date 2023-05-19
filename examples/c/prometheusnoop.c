@@ -25,6 +25,7 @@
 
     -b, --binary=BINARY        pathname or binary name in $PATH
     -p, --pid=PID              pid to trace
+    -d, --include_description  include the metric description in each event
     -v, --verbose              Verbose debug output
     -?, --help                 Give this help list
         --usage                Give a short usage message
@@ -38,7 +39,8 @@
 */
 
 static struct env {
-	bool verbose;
+	bool verbose,
+	     include_description;
 	const char *binary_name;
 	pid_t target_pid;
 } env = {
@@ -58,12 +60,16 @@ static const struct argp_option opts[] = {
 	{ "verbose", 'v', NULL, 0, "Verbose debug output" },
 	{ "binary", 'b', "BINARY", 0, "pathname or binary name in $PATH" },
 	{ "pid", 'p', "PID", 0, "pid to trace" },
+	{ "include_description", 'd', NULL, 0, "include the metric description in each event" },
 	{},
 };
 
 static error_t parse_arg(int key, char *arg, struct argp_state *state)
 {
 	switch (key) {
+	case 'd':
+		env.include_description = true;
+		break;
 	case 'v':
 		env.verbose = true;
 		break;
@@ -132,7 +138,13 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 
 	strftime(ts, sizeof(ts), "%H:%M:%S", tm);
 
-	printf("%-8s (%p) %-7d: desc: \"%.*s\" value: ", ts, e->object, e->pid, (int)sizeof(e->description), e->description);
+	printf("%-8s (%p) %-7d: ", ts, e->object, e->pid);
+
+	if (env.include_description)
+		printf("desc: \"%.*s\" ", (int)sizeof(e->description), e->description);
+
+	fputs("value: ", stdout);
+
 	if (e->float_value)
 		printf("%f\n", Float64frombits(e->value));
 	else
@@ -190,6 +202,8 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to open and load BPF skeleton\n");
 		return 1;
 	}
+
+	skel->rodata->include_description = env.include_description;
 
 	/* Load & verify BPF programs */
 	err = prometheusnoop_bpf__load(skel);

@@ -5,6 +5,7 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 #include <bpf/bpf_core_read.h>
+#include <stdbool.h>
 #include "prometheusnoop.h"
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
@@ -13,6 +14,8 @@ struct {
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
 	__uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
+
+const volatile bool include_description = false;
 
 #if 0
 # pahole -C string main
@@ -82,6 +85,9 @@ static inline int counter_read(struct event *e, int value_offset,
 	if (bpf_probe_read_user(&e->value, sizeof(e->value), object + value_offset) < 0)
 		return -11111111;
 
+	if (!include_description)
+		return 0;
+
 	github_com_prometheus_client_golang_prometheus_Desc *prometheus_counter_desc_ptr;
 
 	if (bpf_probe_read_user(&prometheus_counter_desc_ptr, sizeof(prometheus_counter_desc_ptr), object + desc_offset) < 0)
@@ -117,7 +123,7 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 {
 	const char unknown_description[] = "unknown description";
 
-	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e), 0);
+	struct event *e = bpf_ringbuf_reserve(&rb, sizeof(*e) - (include_description ? 0 : sizeof(e->description)), 0);
 	if (!e)
 		return 0;
 
@@ -126,7 +132,8 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 	int ret = counter_read(e, value_offset, desc_offset, object);
 
 	if (ret < 0) {
-		__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
+		if (include_description)
+			__builtin_memcpy(e->description, unknown_description, sizeof(unknown_description));
 		e->float_value = false;
 		e->value = ret;
 	} else {
