@@ -41,7 +41,9 @@ static struct env {
 	bool verbose;
 	const char *binary_name;
 	pid_t target_pid;
-} env;
+} env = {
+	.target_pid = -1, // All processes if not specified.
+};
 
 const char *argp_program_version = "prometheusnoop 0.0";
 const char *argp_program_bug_address = "<acme@kernel.org>";
@@ -145,7 +147,7 @@ static int attach_function_to_uprobe(const char *func_name, struct bpf_program *
 
 	opts->func_name = func_name;
 	opts->retprobe = retprobe;
-	*linkp = bpf_program__attach_uprobe_opts(/*prog=*/prog, /*pid=*/-1, /*binary_path=*/env->binary_name,
+	*linkp = bpf_program__attach_uprobe_opts(/*prog=*/prog, /*pid=*/env->target_pid, /*binary_path=*/env->binary_name,
 						 /*func_offset=*/0, /*opts=*/opts);
 	if (!linkp) {
 		err = -errno;
@@ -188,8 +190,6 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to open and load BPF skeleton\n");
 		return 1;
 	}
-
-        skel->rodata->target_pid = env.target_pid;
 
 	/* Load & verify BPF programs */
 	err = prometheusnoop_bpf__load(skel);

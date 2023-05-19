@@ -14,13 +14,6 @@ struct {
 	__uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
 
-const volatile unsigned long target_pid = 0;
-
-static bool filtered_pid(pid_t pid)
-{
-	return target_pid && pid != target_pid;
-}
-
 #if 0
 # pahole -C string main
 struct string {
@@ -148,9 +141,6 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 static int metric_event(int value_offset, int desc_offset, bool float_value, void *object)
 {
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
-
-	if (filtered_pid(pid))
-		return 0;
 
 	return queue_metric_event(value_offset, desc_offset, float_value, pid, object);
 }
