@@ -131,7 +131,7 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 {
 	const char unknown_description[] = "unknown description";
 	struct event *e;
-	const size_t event_size = include_description ? sizeof(*e) : offsetof(typeof(*e), description);
+	const size_t event_size = offsetof(typeof(*e), description) + (include_description ? sizeof(e->description) : 0);
 #ifdef USE_PERF_RING_BUFFER
 	struct event e_buffer;
 	e = &e_buffer;
