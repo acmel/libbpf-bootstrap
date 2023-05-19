@@ -10,10 +10,18 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
+#ifdef USE_PERF_RING_BUFFER
+struct {
+        __uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);
+        __type(key, int);
+        __type(value, __u32);
+} rb SEC(".maps");
+#else
 struct {
 	__uint(type, BPF_MAP_TYPE_RINGBUF);
 	__uint(max_entries, 256 * 1024);
 } rb SEC(".maps");
+#endif
 
 const volatile bool include_description = false;
 
@@ -124,10 +132,14 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 	const char unknown_description[] = "unknown description";
 	struct event *e;
 	const size_t event_size = sizeof(*e) - (include_description ? 0 : sizeof(e->description));
-
+#ifdef USE_PERF_RING_BUFFER
+	struct event e_buffer = {};
+	e = &e_buffer;
+#else
 	e = bpf_ringbuf_reserve(&rb, event_size, 0);
 	if (!e)
 		return 0;
+#endif
 
 	e->pid = pid;
 	e->object = object;
@@ -143,7 +155,11 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 	}
 
 	/* successfully submit it to user-space for post-processing */
+#ifdef USE_PERF_RING_BUFFER
+	bpf_perf_event_output(ctx, &rb, BPF_F_CURRENT_CPU, e, event_size);
+#else
 	bpf_ringbuf_submit(e, 0);
+#endif
 	return 0;
 }
 

@@ -126,7 +126,11 @@ double Float64frombits(uint64_t bits)
 
 double Float64frombits(uint64_t bits);
 
+#ifdef USE_PERF_RING_BUFFER
+static void handle_event(void *ctx, int cpu, void *data, __u32 data_sz)
+#else
 static int handle_event(void *ctx, void *data, size_t data_sz)
+#endif
 {
 	const struct event *e = data;
 	time_t t;
@@ -149,8 +153,17 @@ static int handle_event(void *ctx, void *data, size_t data_sz)
 		printf("%f\n", Float64frombits(e->value));
 	else
 		printf("%" PRId64 "\n", e->value);
+#ifndef USE_PERF_RING_BUFFER
 	return 0;
+#endif
 }
+
+#ifdef USE_PERF_RING_BUFFER
+void handle_lost(void *ctx __maybe_unused, int cpu, __u64 cnt)
+{
+	printf("LOST %" PRIu64 " events on cpu %d!\n", (uint64_t)cnt, cpu);
+}
+#endif
 
 static int attach_function_to_uprobe(const char *func_name, struct bpf_program *prog, struct bpf_link **linkp,
 				     bool retprobe, struct env *env, struct bpf_uprobe_opts *opts)
@@ -176,7 +189,11 @@ static int attach_function_to_uprobe(const char *func_name, struct bpf_program *
 
 int main(int argc, char **argv)
 {
+#ifdef USE_PERF_RING_BUFFER
+	struct perf_buffer *rb = NULL;
+#else
 	struct ring_buffer *rb = NULL;
+#endif
 	struct prometheusnoop_bpf *skel;
 	LIBBPF_OPTS(bpf_uprobe_opts, uprobe_opts);
 
@@ -225,9 +242,16 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Failed to attach BPF skeleton\n");
 		goto cleanup;
 	}
-
+#ifdef USE_PERF_RING_BUFFER
+	rb = perf_buffer__new(/*map_fd=*/bpf_map__fd(skel->maps.rb),
+			      /*page_count=*/32,
+			      /*sample_cb=*/handle_event,
+			      /*lost_cb=*/handle_lost,
+			      /*ctx=*/NULL,/*opts=*/NULL);
+#else
 	/* Set up ring buffer polling */
 	rb = ring_buffer__new(bpf_map__fd(skel->maps.rb), handle_event, NULL, NULL);
+#endif
 	if (!rb) {
 		err = -1;
 		fprintf(stderr, "Failed to create ring buffer\n");
@@ -237,7 +261,11 @@ int main(int argc, char **argv)
 	/* Process events */
 	printf("%-8s %-25s %-7s\n", "TIME", "EVENT(Object)", "PID");
 	while (!exiting) {
+#ifdef USE_PERF_RING_BUFFER
+		err = perf_buffer__poll(rb, 100 /* timeout, ms */);
+#else
 		err = ring_buffer__poll(rb, 100 /* timeout, ms */);
+#endif
 		/* Ctrl-C will cause -EINTR */
 		if (err == -EINTR) {
 			err = 0;
@@ -251,7 +279,11 @@ int main(int argc, char **argv)
 
 cleanup:
 	/* Clean up */
+#ifdef USE_PERF_RING_BUFFER
+	perf_buffer__free(rb);
+#else
 	ring_buffer__free(rb);
+#endif
 	prometheusnoop_bpf__destroy(skel);
 
 	return err < 0 ? -err : 0;
