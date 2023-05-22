@@ -25,7 +25,6 @@
 
     -b, --binary=BINARY        pathname or binary name in $PATH
     -p, --pid=PID              pid to trace
-    -t, --timer_delay=NSECS    delay sending the metric counter by at most NSEC nanoseconds
     -d, --include_description  include the metric description in each event
     -v, --verbose              Verbose debug output
     -?, --help                 Give this help list
@@ -42,7 +41,6 @@
 static struct env {
 	bool verbose,
 	     include_description;
-	uint64_t   timer_delay;
 	const char *binary_name;
 	pid_t target_pid;
 } env = {
@@ -63,7 +61,6 @@ static const struct argp_option opts[] = {
 	{ "binary", 'b', "BINARY", 0, "pathname or binary name in $PATH" },
 	{ "pid", 'p', "PID", 0, "pid to trace" },
 	{ "include_description", 'd', NULL, 0, "include the metric description in each event" },
-	{ "timer_delay", 't', "NSECS", 0, "delay sending the metric counter by at most NSEC nanoseconds" },
 	{},
 };
 
@@ -84,14 +81,6 @@ static error_t parse_arg(int key, char *arg, struct argp_state *state)
 		env.target_pid = strtol(arg, NULL, 10);
 		if (errno || env.target_pid <= 0) {
 			fprintf(stderr, "Invalid pid: %s\n", arg);
-			argp_usage(state);
-		}
-		break;
-	case 't':
-		errno = 0;
-		env.timer_delay = strtol(arg, NULL, 10);
-		if (errno || env.timer_delay <= 0) {
-			fprintf(stderr, "Invalid timer delay: %s\n", arg);
 			argp_usage(state);
 		}
 		break;
@@ -232,7 +221,6 @@ int main(int argc, char **argv)
 	}
 
 	skel->rodata->include_description = env.include_description;
-	skel->rodata->timer_delay	  = env.timer_delay;
 
 	/* Load & verify BPF programs */
 	err = prometheusnoop_bpf__load(skel);

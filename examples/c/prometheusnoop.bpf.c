@@ -8,10 +8,6 @@
 #include <stdbool.h>
 #include "prometheusnoop.h"
 
-#ifndef CLOCK_MONOTONIC
-#define CLOCK_MONOTONIC 1
-#endif
-
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
 #ifdef USE_PERF_RING_BUFFER
@@ -28,27 +24,6 @@ struct {
 #endif
 
 const volatile bool include_description = false;
-const volatile uint64_t timer_delay = 0;
-
-struct metric {
-	struct bpf_timer timer;
-	struct {
-		uint16_t val, desc;
-	} offset;
-	bool		 float_value;
-};
-
-struct timer_key {
-	void *object;
-	pid_t pid;
-};
-
-struct {
-        __uint(type, BPF_MAP_TYPE_HASH);
-        __uint(max_entries, 16384);
-        __type(key, struct timer_key);
-        __type(value, struct metric);
-} metrics SEC(".maps");
 
 #if 0
 # pahole -C string main
@@ -194,42 +169,9 @@ static int queue_metric_event(int value_offset, int desc_offset, bool float_valu
 	return 0;
 }
 
-static int metric_timer_cb(void *map __maybe_unused, struct timer_key *key, struct metric *metric)
-{
-	queue_metric_event(metric->offset.val, metric->offset.desc, metric->float_value, key->pid, key->object, NULL);
-	bpf_map_delete_elem(&metrics, key);
-	return 0;
-}
-
-static int deferred_metric_event(int value_offset, int desc_offset, bool float_value, void *object, pid_t pid)
-{
-	struct timer_key key = {
-		.object = object,
-		.pid	= pid,
-	};
-	struct metric *metric = bpf_map_lookup_elem(&metrics, &key);
-	if (metric)
-		return 0;
-
-	struct metric new_metric = {
-		.offset.val  = value_offset,
-		.offset.desc = desc_offset,
-		.float_value = float_value,
-	};
-
-	bpf_timer_init(&new_metric.timer, &new_metric, CLOCK_MONOTONIC);
-	bpf_map_update_elem(&metrics, &key, &new_metric, BPF_ANY);
-	bpf_timer_set_callback(&new_metric.timer, metric_timer_cb);
-	bpf_timer_start(&new_metric.timer, timer_delay, /*flags=*/0);
-	return 0;
-}
-
 static int metric_event(int value_offset, int desc_offset, bool float_value, void *object, void *ctx)
 {
 	pid_t pid = bpf_get_current_pid_tgid() >> 32;
-
-	if (timer_delay) 
-		return deferred_metric_event(value_offset, desc_offset, float_value, object, pid);
 
 	return queue_metric_event(value_offset, desc_offset, float_value, pid, object, ctx);
 }
